@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { StatsProvider } from './contexts/StatsContext';
 import { DataProvider } from './contexts/DataContext';
 import LoginPage from './pages/LoginPage';
 import RegistrationPage from './pages/RegistrationPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import GuestDashboard from './pages/guest/GuestDashboard';
 import PlayerDashboard from './pages/player/PlayerDashboard';
 import CoachDashboard from './pages/coach/CoachDashboard';
@@ -22,26 +24,14 @@ import ReportsPage from './pages/admin/ReportsPage';
 import Header from './components/layout/Header';
 import MobileNavigation from './components/layout/MobileNavigation';
 
-function AppContent() {
+function Dashboard() {
   const { user, logout } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
-  const [showRegistration, setShowRegistration] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
-  if (!user) {
-    if (showForgotPassword) {
-      return <ForgotPasswordPage onBackToLogin={() => setShowForgotPassword(false)} />;
-    }
+  // Note: user is null here if not logged in, but MainApp handles that logic usually.
+  // However, we need to handle the case where we are at / but not logged in.
 
-    return showRegistration ? (
-      <RegistrationPage onSwitchToLogin={() => setShowRegistration(false)} />
-    ) : (
-      <LoginPage
-        onSwitchToRegistration={() => setShowRegistration(true)}
-        onSwitchToForgotPassword={() => setShowForgotPassword(true)}
-      />
-    );
-  }
+  if (!user) return <Navigate to="/login" replace />;
 
   const renderPage = () => {
     if (user.role === 'guest') {
@@ -130,15 +120,46 @@ function AppContent() {
   );
 }
 
+function AuthScreens() {
+  const { user } = useAuth();
+  const [showRegistration, setShowRegistration] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (showForgotPassword) {
+    return <ForgotPasswordPage onBackToLogin={() => setShowForgotPassword(false)} />;
+  }
+
+  return showRegistration ? (
+    <RegistrationPage onSwitchToLogin={() => setShowRegistration(false)} />
+  ) : (
+    <LoginPage
+      onSwitchToRegistration={() => setShowRegistration(true)}
+      onSwitchToForgotPassword={() => setShowForgotPassword(true)}
+    />
+  );
+}
+
 function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        <StatsProvider>
-          <AppContent />
-        </StatsProvider>
-      </DataProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <DataProvider>
+          <StatsProvider>
+            <Routes>
+              <Route path="/login" element={<AuthScreens />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/" element={<Dashboard />} />
+              {/* Catch all redirect to root (which redirects to login if needed) */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </StatsProvider>
+        </DataProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

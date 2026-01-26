@@ -52,6 +52,12 @@ export class User {
     @IsEnum(UserStatus)
     status!: UserStatus;
 
+    @Column({ default: false })
+    isVerified!: boolean;
+
+    @Column({ nullable: true, select: false })
+    verificationToken!: string;
+
     @Column({ nullable: true })
     @IsOptional()
     avatar!: string;

@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import api from '../api/axios';
 
 interface User {
   id: string;
@@ -34,80 +35,54 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = async (email: string, _password: string) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock user based on email for demo purposes
-    let mockUser: User;
-    if (email.includes('admin')) {
-      mockUser = {
-        id: '1',
-        name: 'Uditha Sandeepa',
-        email,
-        phone: '+94 77 123 4567',
-        role: 'admin',
-        avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400'
-      };
-    } else if (email.includes('coach')) {
-      mockUser = {
-        id: '2',
-        name: 'Ravindra Pushpakumara',
-        email,
-        phone: '+94 71 234 5678',
-        role: 'coach',
-        avatar: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=400'
-      };
-    } else if (email.includes('player')) {
-      mockUser = {
-        id: '3',
-        name: 'Sumith Ranasinghe',
-        email,
-        phone: '+94 76 345 6789',
-        role: 'player',
-        avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=400'
-      };
-    } else {
-      mockUser = {
-        id: '4',
-        name: 'Amil Gunaratne',
-        email,
-        phone: '+94 75 456 7890',
-        role: 'guest'
-      };
+  // Check for existing token on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    if (token && storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error("Failed to parse stored user", e);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      }
     }
-    
-    setUser(mockUser);
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    const response = await api.post('/auth/login', { email, password });
+    const { token, user } = response.data;
+
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    setUser(user);
   };
 
-  const register = async (name: string, email: string, _password: string, phone: string, role: string) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newUser: User = {
-      id: Date.now().toString(),
-      name,
-      email,
-      phone,
-      role: role as User['role']
-    };
-    
-    setUser(newUser);
+  const register = async (name: string, email: string, password: string, phone: string, role: string) => {
+    await api.post('/auth/register', { name, email, password, phone, role });
+    // Do not log in automatically. User must verify email.
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
   };
 
   const loginGuest = async (name: string, email: string, phone: string) => {
+    // Guest login might strictly be frontend-only or have a separate endpoint
+    // For now, keeping it simple as before or could add a guest endpoint
     await new Promise(resolve => setTimeout(resolve, 300));
-    setUser({
+    const guestUser: User = {
       id: 'guest',
       name,
       email,
       phone,
       role: 'guest'
-    });
+    };
+    setUser(guestUser);
+    // Optionally store guest session?
   };
 
   return (

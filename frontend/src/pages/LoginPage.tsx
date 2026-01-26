@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Lock, Eye, EyeOff, Phone, Mail } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, Phone, Mail, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface LoginPageProps {
@@ -12,6 +12,7 @@ export default function LoginPage({ onSwitchToRegistration, onSwitchToForgotPass
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [guestInfo, setGuestInfo] = useState({
     name: '',
@@ -23,10 +24,12 @@ export default function LoginPage({ onSwitchToRegistration, onSwitchToForgotPass
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     try {
       await login(email, password);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
+      setError(error.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +81,14 @@ export default function LoginPage({ onSwitchToRegistration, onSwitchToForgotPass
         {/* Login Form */}
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <h2 className="text-2xl font-semibold text-gray-900 mb-6 text-center">Welcome Back</h2>
-          
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg flex items-center text-sm">
+              <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -138,13 +148,13 @@ export default function LoginPage({ onSwitchToRegistration, onSwitchToForgotPass
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
             </button>
-          <button
-            type="button"
-            onClick={() => setShowGuestModal(true)}
-            className="w-full mt-3 bg-white text-green-700 border border-green-600 py-3 px-4 rounded-lg font-medium hover:bg-green-50 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
-          >
-            Continue as Guest
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowGuestModal(true)}
+              className="w-full mt-3 bg-white text-green-700 border border-green-600 py-3 px-4 rounded-lg font-medium hover:bg-green-50 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+            >
+              Continue as Guest
+            </button>
           </form>
 
           <div className="mt-6 text-center">
@@ -187,7 +197,7 @@ export default function LoginPage({ onSwitchToRegistration, onSwitchToForgotPass
             <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
               <h3 className="text-2xl font-semibold text-gray-900 mb-6 text-center">Guest Information</h3>
               <p className="text-gray-600 mb-6 text-center">Please provide your details to continue as a guest</p>
-              
+
               <form onSubmit={handleGuestSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
