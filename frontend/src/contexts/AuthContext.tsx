@@ -13,7 +13,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, phone: string, role: string) => Promise<void>;
+  register: (name: string, email: string, password: string, phone: string, role: string, adminCode?: string) => Promise<void>;
   logout: () => void;
   loginGuest: (name: string, email: string, phone: string) => Promise<void>;
 }
@@ -59,8 +59,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(user);
   };
 
-  const register = async (name: string, email: string, password: string, phone: string, role: string) => {
-    await api.post('/auth/register', { name, email, password, phone, role });
+  const register = async (name: string, email: string, password: string, phone: string, role: string, adminCode?: string) => {
+    await api.post('/auth/register', { name, email, password, phone, role, adminCode });
     // Do not log in automatically. User must verify email.
   };
 

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Lock, Eye, EyeOff, Phone, Mail, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface LoginPageProps {
   onSwitchToRegistration: () => void;
-  onSwitchToForgotPassword: () => void;
 }
 
-export default function LoginPage({ onSwitchToRegistration, onSwitchToForgotPassword }: LoginPageProps) {
+export default function LoginPage({ onSwitchToRegistration }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,6 +20,7 @@ export default function LoginPage({ onSwitchToRegistration, onSwitchToForgotPass
     phone: ''
   });
   const { login, loginGuest } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,7 +135,7 @@ export default function LoginPage({ onSwitchToRegistration, onSwitchToForgotPass
             <div className="flex justify-end mb-4">
               <button
                 type="button"
-                onClick={onSwitchToForgotPassword}
+                onClick={() => navigate('/forgot-password')}
                 className="text-sm text-green-600 hover:text-green-700 font-medium"
               >
                 Forgot Password?

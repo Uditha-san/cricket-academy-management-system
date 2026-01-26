@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { StatsProvider } from './contexts/StatsContext';
 import { DataProvider } from './contexts/DataContext';
@@ -123,14 +123,9 @@ function Dashboard() {
 function AuthScreens() {
   const { user } = useAuth();
   const [showRegistration, setShowRegistration] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   if (user) {
     return <Navigate to="/" replace />;
-  }
-
-  if (showForgotPassword) {
-    return <ForgotPasswordPage onBackToLogin={() => setShowForgotPassword(false)} />;
   }
 
   return showRegistration ? (
@@ -138,7 +133,6 @@ function AuthScreens() {
   ) : (
     <LoginPage
       onSwitchToRegistration={() => setShowRegistration(true)}
-      onSwitchToForgotPassword={() => setShowForgotPassword(true)}
     />
   );
 }
@@ -151,6 +145,7 @@ function App() {
           <StatsProvider>
             <Routes>
               <Route path="/login" element={<AuthScreens />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/" element={<Dashboard />} />
               {/* Catch all redirect to root (which redirects to login if needed) */}

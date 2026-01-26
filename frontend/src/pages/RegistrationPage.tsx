@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, Eye, EyeOff, Phone, AlertCircle } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Phone, AlertCircle, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface RegistrationPageProps {
@@ -13,7 +13,9 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
     email: '',
     phone: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: 'player',
+    adminCode: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -32,9 +34,14 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
       return;
     }
 
+    if (formData.role === 'admin' && !formData.adminCode) {
+      setError('Admin Registration Code is required');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await register(formData.name, formData.email, formData.password, formData.phone, 'player');
+      await register(formData.name, formData.email, formData.password, formData.phone, formData.role, formData.adminCode);
       // Navigate to verification page with email
       navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
     } catch (error: any) {
@@ -81,6 +88,44 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+
+            {/* Role Selection */}
+            <div className="flex space-x-2 p-1 bg-gray-50 rounded-lg">
+              {['player', 'coach', 'admin'].map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, role }))}
+                  className={`flex-1 py-2 text-sm font-medium rounded-md capitalize transition-all ${formData.role === role
+                    ? 'bg-white text-green-700 shadow-sm ring-1 ring-gray-200'
+                    : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
+
+            {/* Admin Code Field - Only show if Admin is selected */}
+            {formData.role === 'admin' && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Admin Registration Code <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-600 w-5 h-5" />
+                  <input
+                    type="text"
+                    name="adminCode"
+                    value={formData.adminCode}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-green-50"
+                    placeholder="Enter secret code"
+                    required={formData.role === 'admin'}
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Full Name

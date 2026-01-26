@@ -58,6 +58,12 @@ export class User {
     @Column({ nullable: true, select: false })
     verificationToken!: string;
 
+    @Column({ nullable: true, select: false })
+    resetPasswordToken!: string;
+
+    @Column({ nullable: true, select: false })
+    resetPasswordExpires!: Date;
+
     @Column({ nullable: true })
     @IsOptional()
     avatar!: string;

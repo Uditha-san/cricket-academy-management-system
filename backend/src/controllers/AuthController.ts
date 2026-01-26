@@ -17,11 +17,54 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+const getEmailTemplate = (title: string, content: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+        .header { background-color: #16a34a; padding: 20px; text-align: center; }
+        .header h1 { color: #ffffff; margin: 0; font-size: 24px; }
+        .content { padding: 30px 20px; background-color: #ffffff; }
+        .footer { background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #e0e0e0; }
+        .otp-box { background-color: #f0fdf4; border: 2px dashed #16a34a; padding: 15px; text-align: center; margin: 20px 0; border-radius: 8px; }
+        .otp-code { font-size: 32px; font-weight: bold; color: #16a34a; letter-spacing: 5px; margin: 0; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #16a34a; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SCC Academy of Cricket</h1>
+        </div>
+        <div class="content">
+            <h2 style="color: #16a34a; margin-top: 0;">${title}</h2>
+            ${content}
+        </div>
+        <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} SCC Academy of Cricket. All rights reserved.</p>
+            <p>123 Cricket Lane, Sportscity, SC 54321</p>
+        </div>
+    </div>
+</body>
+</html>
+`;
+
 export class AuthController {
     static async register(req: Request, res: Response): Promise<void> {
-        const { name, email, password, phone, role } = req.body;
+        const { name, email, password, phone, role, adminCode } = req.body;
 
         try {
+            // Validate Admin Secret Code if registering as Admin
+            if (role === UserRole.ADMIN) {
+                if (adminCode !== process.env.ADMIN_SECRET_CODE) {
+                    res.status(403).json({ message: "Invalid Admin Secret Code" });
+                    return;
+                }
+            }
+
             let user = await userRepository.findOne({ where: { email } });
 
             if (user) {
@@ -56,17 +99,22 @@ export class AuthController {
             await userRepository.save(user);
 
             // Send Verification Email
+            const emailContent = `
+                <p>Hello ${name},</p>
+                <p>Thank you for registering with SCC Academy as a <strong>${user.role}</strong>.</p>
+                <p>To complete your registration, please verify your email address using the code below:</p>
+                <div class="otp-box">
+                    <p class="otp-code">${verificationToken}</p>
+                </div>
+                <p>Enter this code on the verification page to activate your account.</p>
+                <p>If you did not request this, please ignore this email.</p>
+            `;
+
             const mailOptions = {
                 from: process.env.EMAIL_USER,
                 to: email,
                 subject: 'Verify Your Email - SCC Academy',
-                html: `
-                    <h1>Welcome to SCC Academy!</h1>
-                    <p>Your verification code is:</p>
-                    <h2 style="color: #4CAF50; letter-spacing: 5px;">${verificationToken}</h2>
-                    <p>Please enter this code on the verification page to complete your registration.</p>
-                    <p>If you didn't request this, please ignore this email.</p>
-                `
+                html: getEmailTemplate('Email Verification', emailContent)
             };
 
             await transporter.sendMail(mailOptions);
@@ -92,7 +140,7 @@ export class AuthController {
         try {
             const user = await userRepository.findOne({
                 where: { email },
-                select: ["id", "email", "password", "role", "status", "isVerified", "verificationToken"]
+                select: ["id", "name", "email", "password", "role", "status", "isVerified", "verificationToken"]
             });
 
             if (!user) {
@@ -118,6 +166,28 @@ export class AuthController {
             user.isVerified = true;
             user.verificationToken = ""; // Clear token
             await userRepository.save(user);
+
+            // Send Welcome Email
+            const welcomeContent = `
+                <p>Hello ${user.name},</p>
+                <p>Congratulations! Your email has been successfully verified.</p>
+                <p>Welcome to the <strong>SCC Academy of Cricket</strong> family. We are excited to have you on board.</p>
+                <p>You can now log in to your dashboard to book courts, view stats, and manage your profile.</p>
+                <center>
+                    <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/login" class="button">Login to your Account</a>
+                </center>
+                <p style="margin-top: 20px;">See you on the pitch!</p>
+            `;
+
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: 'Welcome to SCC Academy! 🏏',
+                html: getEmailTemplate('Welcome Aboard!', welcomeContent)
+            };
+
+            await transporter.sendMail(mailOptions);
+            console.log(`Welcome email sent to ${email}`);
 
             res.json({ message: "Email verified successfully. You can now login." });
         } catch (error) {
@@ -154,13 +224,120 @@ export class AuthController {
 
             const token = jwt.sign(
                 { userId: user.id, email: user.email, role: user.role },
-                process.env.JWT_SECRET || "your-secret-key",
+                process.env.JWT_SECRET || "scc_academy_secure_jwt_secret",
                 { expiresIn: "1h" }
             );
 
             res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
         } catch (error) {
             console.error("Login error:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+
+    static async forgotPassword(req: Request, res: Response): Promise<void> {
+        const { email } = req.body;
+
+        try {
+            const user = await userRepository.findOne({ where: { email } });
+            if (!user) {
+                // Return success even if user not found to prevent enumeration
+                res.status(200).json({ message: "If your email is registered, you will receive a password reset code." });
+                return;
+            }
+
+            // Generate 6-digit OTP
+            const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+            const expires = new Date();
+            expires.setMinutes(expires.getMinutes() + 15); // Expires in 15 mins
+
+            user.resetPasswordToken = resetToken;
+            user.resetPasswordExpires = expires;
+            await userRepository.save(user);
+
+            // Send Reset Email
+            const emailContent = `
+                <p>Hello ${user.name},</p>
+                <p>You requested a password reset. Please use the code below to reset your password:</p>
+                <div class="otp-box">
+                    <p class="otp-code">${resetToken}</p>
+                </div>
+                <p>This code will expire in 15 minutes.</p>
+                <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>
+            `;
+
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: 'Password Reset Request - SCC Academy',
+                html: getEmailTemplate('Reset Your Password', emailContent)
+            };
+
+            await transporter.sendMail(mailOptions);
+
+            res.status(200).json({ message: "If your email is registered, you will receive a password reset code." });
+        } catch (error) {
+            console.error("Forgot Password error:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+
+    static async resetPassword(req: Request, res: Response): Promise<void> {
+        const { email, otp, newPassword } = req.body;
+
+        try {
+            const user = await userRepository.findOne({
+                where: { email },
+                select: ["id", "name", "email", "resetPasswordToken", "resetPasswordExpires"]
+            });
+
+            if (!user) {
+                res.status(400).json({ message: "Invalid request" });
+                return;
+            }
+
+            if (!user.resetPasswordToken || !user.resetPasswordExpires) {
+                res.status(400).json({ message: "No reset request found" });
+                return;
+            }
+
+            if (user.resetPasswordToken !== otp) {
+                res.status(400).json({ message: "Invalid code" });
+                return;
+            }
+
+            if (user.resetPasswordExpires < new Date()) {
+                res.status(400).json({ message: "Code has expired" });
+                return;
+            }
+
+            // Update password
+            user.password = await bcrypt.hash(newPassword, 10);
+            user.resetPasswordToken = ""; // Clear token
+            // We set the date to something in the past to "clear" it properly
+            user.resetPasswordExpires = new Date(0);
+
+            await userRepository.save(user);
+
+            // Send Confirmation Email
+            const emailContent = `
+                <p>Hello ${user.name},</p>
+                <p>Your password has been successfully reset.</p>
+                <p>You can now log in with your new password.</p>
+            `;
+
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: 'Password Reset Successful - SCC Academy',
+                html: getEmailTemplate('Password Changed', emailContent)
+            };
+
+            await transporter.sendMail(mailOptions);
+
+            res.status(200).json({ message: "Password reset successfully. You can now login." });
+        } catch (error) {
+            console.error("Reset Password error:", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }
