@@ -56,12 +56,6 @@ export default function LoginPage({ onSwitchToRegistration }: LoginPageProps) {
     }));
   };
 
-  const demoAccounts = [
-    { email: 'admin@cricket.com', role: 'Admin' },
-    { email: 'coach@cricket.com', role: 'Coach' },
-    { email: 'player@cricket.com', role: 'Player' }
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
@@ -169,27 +163,6 @@ export default function LoginPage({ onSwitchToRegistration }: LoginPageProps) {
               </button>
             </p>
           </div>
-        </div>
-
-        {/* Demo Accounts */}
-        <div className="mt-6 bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Demo Accounts</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {demoAccounts.map((account) => (
-              <button
-                key={account.email}
-                onClick={() => {
-                  setEmail(account.email);
-                  setPassword('demo123');
-                }}
-                className="p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div className="font-medium text-gray-900">{account.role}</div>
-                <div className="text-xs text-gray-500">{account.email}</div>
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-gray-500 mt-3">Click to auto-fill credentials</p>
         </div>
 
         {/* Guest Information Modal */}

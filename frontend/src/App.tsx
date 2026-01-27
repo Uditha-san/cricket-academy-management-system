@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { StatsProvider } from './contexts/StatsContext';
 import { DataProvider } from './contexts/DataContext';
@@ -23,6 +23,7 @@ import ManagePlayersPage from './pages/admin/ManagePlayersPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import Header from './components/layout/Header';
 import MobileNavigation from './components/layout/MobileNavigation';
+import LandingPage from './pages/LandingPage';
 
 function Dashboard() {
   const { user, logout } = useAuth();
@@ -122,17 +123,19 @@ function Dashboard() {
 
 function AuthScreens() {
   const { user } = useAuth();
-  const [showRegistration, setShowRegistration] = useState(false);
+  const navigate = useNavigate();
+  const location = window.location.pathname;
+  const showRegistration = location === '/register';
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return showRegistration ? (
-    <RegistrationPage onSwitchToLogin={() => setShowRegistration(false)} />
+    <RegistrationPage onSwitchToLogin={() => navigate('/login')} />
   ) : (
     <LoginPage
-      onSwitchToRegistration={() => setShowRegistration(true)}
+      onSwitchToRegistration={() => navigate('/register')}
     />
   );
 }
@@ -144,11 +147,13 @@ function App() {
         <DataProvider>
           <StatsProvider>
             <Routes>
+              <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<AuthScreens />} />
+              <Route path="/register" element={<AuthScreens />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
-              <Route path="/" element={<Dashboard />} />
-              {/* Catch all redirect to root (which redirects to login if needed) */}
+              <Route path="/dashboard" element={<Dashboard />} />
+              {/* Catch all redirect to landing page */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </StatsProvider>
