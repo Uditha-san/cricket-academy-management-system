@@ -290,6 +290,7 @@ export default function PlayerProfilePage({ onNavigate }: PlayerProfilePageProps
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time Slot</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Court</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 </tr>
@@ -298,11 +299,12 @@ export default function PlayerProfilePage({ onNavigate }: PlayerProfilePageProps
                 {myBookings.map((booking) => (
                   <tr key={booking.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-900">{booking.date}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{booking.timeSlot || 'N/A'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{booking.courtName}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${booking.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
-                          booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
+                        booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
                         }`}>
                         {booking.status}
                       </span>
@@ -337,7 +339,7 @@ export default function PlayerProfilePage({ onNavigate }: PlayerProfilePageProps
                     <td className="px-4 py-3 text-sm text-gray-900">Rs.{payment.amount}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${payment.status === 'Paid' ? 'bg-green-100 text-green-800' :
-                          'bg-blue-100 text-blue-800'
+                        'bg-blue-100 text-blue-800'
                         }`}>
                         {payment.status}
                       </span>

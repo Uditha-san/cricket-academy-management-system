@@ -4,6 +4,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { AppDataSource } from './config/data-source';
 import authRoutes from './routes/auth';
+import userRoutes from './routes/user';
+import bookingRoutes from './routes/booking';
 
 dotenv.config();
 
@@ -14,6 +16,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/bookings", bookingRoutes);
 
 app.get('/', (req, res) => {
     res.send('Cricket Academy API is running');

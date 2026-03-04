@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import api from '../api/axios';
 
 export interface User {
     id: string;
@@ -56,90 +57,10 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// Initial Mock Data
-const initialUsers: User[] = [
-    {
-        id: '1',
-        name: 'Uditha Sandeepa',
-        email: 'uditha@example.com',
-        phone: '+94 77 123 4567',
-        role: 'admin',
-        status: 'Active',
-        joinDate: '2024-01-01',
-        totalBookings: 0,
-        totalSpent: 0,
-        avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-        id: '2',
-        name: 'Ravindra Pushpakumara',
-        email: 'ravindra@example.com',
-        phone: '+94 71 234 5678',
-        role: 'coach',
-        status: 'Active',
-        joinDate: '2024-02-15',
-        totalBookings: 0,
-        totalSpent: 0,
-        avatar: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-        id: '3',
-        name: 'Sumith Ranasinghe',
-        email: 'sumith@example.com',
-        phone: '+94 76 345 6789',
-        role: 'player',
-        status: 'Active',
-        joinDate: '2024-03-10',
-        battingStyle: 'Right-handed',
-        bowlingStyle: 'Right-arm Fast',
-        totalBookings: 15,
-        totalSpent: 18500,
-        avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-        id: '4',
-        name: 'Amil Gunaratne',
-        email: 'amil@example.com',
-        phone: '+94 75 456 7890',
-        role: 'player',
-        status: 'Active',
-        joinDate: '2024-04-05',
-        battingStyle: 'Left-handed',
-        bowlingStyle: 'Right-arm Spin',
-        totalBookings: 8,
-        totalSpent: 9200,
-        avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=400'
-    }
-];
+// Initial Mock Data (kept for guest/demo purposes if needed, but primary is fetch)
+const initialUsers: User[] = [];
 
-const initialBookings: Booking[] = [
-    {
-        id: 'B001',
-        userId: '1',
-        userName: 'Rahul Sharma',
-        userEmail: 'rahul.sharma@example.com',
-        courtId: 'court-1',
-        courtName: 'Court 1',
-        date: '2025-01-22',
-        timeSlot: '10:00 AM - 11:00 AM',
-        amount: 944,
-        status: 'Confirmed',
-        bookingDate: '2025-01-20'
-    },
-    {
-        id: 'B002',
-        userId: '2',
-        userName: 'Priya Patel',
-        userEmail: 'priya.patel@example.com',
-        courtId: 'court-2',
-        courtName: 'Court 2',
-        date: '2025-01-22',
-        timeSlot: '2:00 PM - 3:00 PM',
-        amount: 708,
-        status: 'Pending',
-        bookingDate: '2025-01-21'
-    }
-];
+const initialBookings: Booking[] = [];
 
 const initialFeedbacks: CoachFeedback[] = [
     {
@@ -181,6 +102,50 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const [users, setUsers] = useState<User[]>(initialUsers);
     const [bookings, setBookings] = useState<Booking[]>(initialBookings);
     const [feedbacks, setFeedbacks] = useState<CoachFeedback[]>(initialFeedbacks);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    const [profileRes, bookingsRes] = await Promise.all([
+                        api.get('/users/profile'),
+                        api.get('/bookings/my')
+                    ]);
+
+                    const userProfile = profileRes.data;
+                    setUsers([userProfile]); // For now, just set the current user
+
+                    // Transform backend bookings to frontend Booking interface
+                    const backendBookings = bookingsRes.data.map((b: any) => ({
+                        id: b.id,
+                        userId: b.user?.id,
+                        userName: userProfile.name, // Assuming own bookings
+                        userEmail: userProfile.email,
+                        courtId: b.facility?.id || 'unknown',
+                        courtName: b.facility?.name || 'Unknown Court',
+                        date: new Date(b.bookingDate).toISOString().split('T')[0],
+                        timeSlot: `${b.startTime} - ${calculateEndTime(b.startTime, b.duration)}`,
+                        amount: parseFloat(b.amount),
+                        status: b.status.charAt(0).toUpperCase() + b.status.slice(1), // Capitalize
+                        bookingDate: new Date(b.createdAt).toISOString().split('T')[0]
+                    }));
+                    setBookings(backendBookings);
+                }
+            } catch (error) {
+                console.error("Failed to fetch data", error);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const calculateEndTime = (startTime: string, duration: number) => {
+        const [hours, minutes] = startTime.split(':').map(Number);
+        const totalMinutes = hours * 60 + minutes + duration * 60;
+        const endHours = Math.floor(totalMinutes / 60);
+        const endMinutes = totalMinutes % 60;
+        return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+    };
 
     const addUser = (user: User) => {
         setUsers(prev => [...prev, user]);

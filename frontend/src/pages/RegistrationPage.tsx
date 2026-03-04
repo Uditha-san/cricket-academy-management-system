@@ -22,20 +22,74 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
   const [isLoading, setIsLoading] = useState(false);
 
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  // Validation functions
+  const validateEmail = (email: string): string => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) return 'Email is required';
+    if (!emailRegex.test(email)) return 'Please enter a valid email address';
+    return '';
+  };
+
+  const validatePassword = (password: string): string => {
+    if (!password) return 'Password is required';
+    if (password.length < 8) return 'Password must be at least 8 characters';
+    if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
+    if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter';
+    if (!/[0-9]/.test(password)) return 'Password must contain at least one number';
+    return '';
+  };
+
+  const validatePhone = (phone: string): string => {
+    if (!phone) return 'Phone number is required';
+    const phoneRegex = /^[+]?[\d\s-]{10,}$/;
+    if (!phoneRegex.test(phone)) return 'Please enter a valid phone number';
+    return '';
+  };
+
+  const validateName = (name: string): string => {
+    if (!name) return 'Name is required';
+    if (name.length < 2) return 'Name must be at least 2 characters';
+    if (name.length > 50) return 'Name must be less than 50 characters';
+    if (!/^[a-zA-Z\s]+$/.test(name)) return 'Name can only contain letters and spaces';
+    return '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
+
+    // Validate all fields
+    const errors: { [key: string]: string } = {};
+
+    const nameError = validateName(formData.name);
+    if (nameError) errors.name = nameError;
+
+    const emailError = validateEmail(formData.email);
+    if (emailError) errors.email = emailError;
+
+    const phoneError = validatePhone(formData.phone);
+    if (phoneError) errors.phone = phoneError;
+
+    const passwordError = validatePassword(formData.password);
+    if (passwordError) errors.password = passwordError;
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
+      errors.confirmPassword = 'Passwords do not match';
     }
 
     if (formData.role === 'admin' && !formData.adminCode) {
-      setError('Admin Registration Code is required');
+      errors.adminCode = 'Admin Registration Code is required';
+    }
+
+    // If there are any errors, display them
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setError('Please fix the errors below');
       return;
     }
 
@@ -53,10 +107,20 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: value
     }));
+
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
 
@@ -119,11 +183,15 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
                     name="adminCode"
                     value={formData.adminCode}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-3 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-green-50"
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-green-50 ${fieldErrors.adminCode ? 'border-red-500' : 'border-green-200'
+                      }`}
                     placeholder="Enter secret code"
                     required={formData.role === 'admin'}
                   />
                 </div>
+                {fieldErrors.adminCode && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.adminCode}</p>
+                )}
               </div>
             )}
             <div>
@@ -137,11 +205,15 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${fieldErrors.name ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Enter your full name"
                   required
                 />
               </div>
+              {fieldErrors.name && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>
+              )}
             </div>
 
             <div>
@@ -155,11 +227,15 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${fieldErrors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Enter your email"
                   required
                 />
               </div>
+              {fieldErrors.email && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -173,11 +249,15 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${fieldErrors.phone ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="+94 77 123 4567"
                   required
                 />
               </div>
+              {fieldErrors.phone && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.phone}</p>
+              )}
             </div>
 
             <div>
@@ -191,7 +271,8 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${fieldErrors.password ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Create a password"
                   required
                 />
@@ -203,6 +284,17 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
+              )}
+              {formData.password && !validatePassword(formData.password) && (
+                <p className="mt-1 text-sm text-green-600">✓ Strong password</p>
+              )}
+              {formData.password && !fieldErrors.password && validatePassword(formData.password) && (
+                <p className="mt-1 text-sm text-gray-500 text-xs">
+                  Password must be 8+ characters with uppercase, lowercase, and number
+                </p>
+              )}
             </div>
 
             <div>
@@ -216,7 +308,8 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${fieldErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Confirm your password"
                   required
                 />
@@ -228,6 +321,12 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
                   {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {fieldErrors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
+              )}
+              {formData.confirmPassword && formData.password === formData.confirmPassword && (
+                <p className="mt-1 text-sm text-green-600">✓ Passwords match</p>
+              )}
             </div>
 
             <button
@@ -251,7 +350,7 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
             </p>
           </div>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }

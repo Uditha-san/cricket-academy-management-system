@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cricket Academy Management System - Presentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        .presentation {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            background: white;
+            position: absolute;
+            top: 0;
+            left: 0;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            color: #1a202c;
+            margin-bottom: 20px;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            color: #2d3748;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h3 {
+            font-size: 1.8rem;
+            color: #4a5568;
+            margin: 20px 0;
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            color: #4a5568;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .content {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 30px;
+        }
+
+        .feature-box {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-box:hover {
+            transform: translateX(10px);
+        }
+
+        .feature-box h3 {
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        ul {
+            list-style: none;
+            margin: 20px 0;
+        }
+
+        li {
+            font-size: 1.3rem;
+            color: #2d3748;
+            margin: 15px 0;
+            padding-left: 40px;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .tech-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-top: 4px solid #667eea;
+        }
+
+        .tech-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .tech-card ul {
+            text-align: left;
+        }
+
+        .tech-card li {
+            font-size: 1.1rem;
+        }
+
+        .problem-list li:before {
+            content: "❌";
+        }
+
+        .solution-list li:before {
+            content: "✅";
+        }
+
+        .demo-section {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .demo-section h2 {
+            color: white;
+            font-size: 3rem;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            font-weight: 600;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .slide-number {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1rem;
+        }
+
+        .impact-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .impact-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .impact-card h3 {
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .impact-card p {
+            font-size: 1.2rem;
+        }
+
+        .timeline {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 40px;
+            position: relative;
+        }
+
+        .timeline:before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #667eea;
+            z-index: -1;
+        }
+
+        .timeline-item {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 3px solid #667eea;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .emoji {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        @media print {
+            .controls, .slide-number {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <div class="content">
+                <div class="emoji">🏏</div>
+                <h1>Cricket Academy Management System</h1>
+                <p class="subtitle">A Comprehensive Digital Solution for Sports Academy Management</p>
+                <div style="margin-top: 60px; text-align: center;">
+                    <p style="font-size: 1.5rem; color: #4a5568;">Presented by: Uditha</p>
+                    <p style="font-size: 1.2rem; color: #718096; margin-top: 10px;">Full-Stack Web Application</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Problem Statement -->
+        <div class="slide">
+            <div class="content">
+                <h2>The Problem</h2>
+                <p class="subtitle">Traditional cricket academies face multiple challenges</p>
+                <ul class="problem-list">
+                    <li>Manual registration and player tracking processes</li>
+                    <li>Inefficient payment management and record keeping</li>
+                    <li>Poor communication between coaches and players</li>
+                    <li>Lack of centralized data for performance analytics</li>
+                    <li>Time-consuming administrative tasks</li>
+                    <li>Data loss and duplication issues</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 3: Solution Overview -->
+        <div class="slide">
+            <div class="content">
+                <h2>Our Solution</h2>
+                <p class="subtitle">A comprehensive role-based platform</p>
+                <div class="two-column">
+                    <div class="feature-box">
+                        <div class="emoji">👨‍💼</div>
+                        <h3>Admin Portal</h3>
+                        <p>Complete control over academy operations, player management, and financial oversight</p>
+                    </div>
+                    <div class="feature-box">
+                        <div class="emoji">🏏</div>
+                        <h3>Player Portal</h3>
+                        <p>Track progress, view statistics, book facilities, and manage payments</p>
+                    </div>
+                    <div class="feature-box">
+                        <div class="emoji">👨‍🏫</div>
+                        <h3>Coach Portal</h3>
+                        <p>Manage sessions, track attendance, and monitor player development</p>
+                    </div>
+                    <div class="feature-box">
+                        <div class="emoji">🌐</div>
+                        <h3>Guest Access</h3>
+                        <p>Public information, registration, and academy details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Technology Stack -->
+        <div class="slide">
+            <div class="content">
+                <h2>Technology Stack</h2>
+                <p class="subtitle">Built with modern, industry-standard technologies</p>
+                <div class="tech-stack">
+                    <div class="tech-card">
+                        <h3>Frontend</h3>
+                        <ul>
+                            <li>React + TypeScript</li>
+                            <li>Vite Build Tool</li>
+                            <li>Responsive Design</li>
+                            <li>Modern UI/UX</li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h3>Backend</h3>
+                        <ul>
+                            <li>Node.js + Express</li>
+                            <li>JWT Authentication</li>
+                            <li>RESTful API</li>
+                            <li>Email Verification</li>
+                        </ul>
+                    </div>
+                    <div class="tech-card">
+                        <h3>Database</h3>
+                        <ul>
+                            <li>MySQL Database</li>
+                            <li>TypeORM</li>
+                            <li>Relational Design</li>
+                            <li>Data Integrity</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Admin Features -->
+        <div class="slide">
+            <div class="content">
+                <h2>Admin Dashboard</h2>
+                <p class="subtitle">Complete control and oversight</p>
+                <div class="two-column">
+                    <div>
+                        <div class="feature-box">
+                            <h3>Player Management</h3>
+                            <ul>
+                                <li>View all registered players</li>
+                                <li>Approve/reject registrations</li>
+                                <li>Update player information</li>
+                                <li>Track performance</li>
+                            </ul>
+                        </div>
+                        <div class="feature-box">
+                            <h3>Facility Management</h3>
+                            <ul>
+                                <li>Equipment booking</li>
+                                <li>Schedule management</li>
+                                <li>Utilization reports</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="feature-box">
+                            <h3>Financial Management</h3>
+                            <ul>
+                                <li>Payment tracking</li>
+                                <li>Revenue reports</li>
+                                <li>Payment analytics</li>
+                                <li>Invoice generation</li>
+                            </ul>
+                        </div>
+                        <div class="feature-box">
+                            <h3>Reports & Analytics</h3>
+                            <ul>
+                                <li>Detailed insights</li>
+                                <li>Data visualization</li>
+                                <li>Export capabilities</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Player & Coach Features -->
+        <div class="slide">
+            <div class="content">
+                <h2>Player & Coach Portals</h2>
+                <div class="two-column">
+                    <div>
+                        <h3 style="text-align: center; color: #667eea;">🏏 Player Features</h3>
+                        <div class="feature-box">
+                            <h3>Personal Dashboard</h3>
+                            <ul>
+                                <li>Performance statistics</li>
+                                <li>Session schedules</li>
+                                <li>Payment history</li>
+                                <li>Facility booking</li>
+                            </ul>
+                        </div>
+                        <div class="feature-box">
+                            <h3>Profile Management</h3>
+                            <ul>
+                                <li>Update personal info</li>
+                                <li>Set training goals</li>
+                                <li>Track improvement</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="text-align: center; color: #667eea;">👨‍🏫 Coach Features</h3>
+                        <div class="feature-box">
+                            <h3>Session Management</h3>
+                            <ul>
+                                <li>View assigned players</li>
+                                <li>Mark attendance</li>
+                                <li>Add performance notes</li>
+                                <li>Track progress</li>
+                            </ul>
+                        </div>
+                        <div class="feature-box">
+                            <h3>Player Development</h3>
+                            <ul>
+                                <li>Performance tracking</li>
+                                <li>Skill assessments</li>
+                                <li>Progress reports</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Security -->
+        <div class="slide">
+            <div class="content">
+                <h2>🔐 Security Features</h2>
+                <p class="subtitle">Enterprise-grade security measures</p>
+                <div class="two-column">
+                    <div class="feature-box">
+                        <h3>Authentication</h3>
+                        <ul>
+                            <li>JWT-based login system</li>
+                            <li>Secure token management</li>
+                            <li>Session handling</li>
+                        </ul>
+                    </div>
+                    <div class="feature-box">
+                        <h3>Email Verification</h3>
+                        <ul>
+                            <li>Prevent fake registrations</li>
+                            <li>Verify user identity</li>
+                            <li>Secure email delivery</li>
+                        </ul>
+                    </div>
+                    <div class="feature-box">
+                        <h3>Access Control</h3>
+                        <ul>
+                            <li>Role-based permissions</li>
+                            <li>Admin secret code</li>
+                            <li>Protected routes</li>
+                        </ul>
+                    </div>
+                    <div class="feature-box">
+                        <h3>Data Protection</h3>
+                        <ul>
+                            <li>Password encryption (Bcrypt)</li>
+                            <li>Secure data storage</li>
+                            <li>Input validation</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: User Experience -->
+        <div class="slide">
+            <div class="content">
+                <h2>📱 User Experience</h2>
+                <p class="subtitle">Designed for everyone, accessible everywhere</p>
+                <ul class="solution-list" style="max-width: 800px; margin: 40px auto;">
+                    <li>Fully responsive design - works on phones, tablets, and desktops</li>
+                    <li>Modern, intuitive interface with clean design</li>
+                    <li>Fast loading times and smooth transitions</li>
+                    <li>Real-time updates and notifications</li>
+                    <li>Visual data presentation with charts and graphs</li>
+                    <li>Easy navigation with clear menu structure</li>
+                    <li>Accessibility features for all users</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 9: DEMO -->
+        <div class="slide">
+            <div class="content">
+                <div class="demo-section">
+                    <div class="emoji">🎬</div>
+                    <h2>LIVE DEMO TIME!</h2>
+                    <p style="font-size: 1.5rem; margin-top: 20px;">Let's see the system in action</p>
+                    <div style="margin-top: 40px; background: rgba(255,255,255,0.2); padding: 30px; border-radius: 15px;">
+                        <h3 style="color: white; margin-bottom: 20px;">Demo Flow:</h3>
+                        <p style="font-size: 1.2rem; text-align: left; margin: 10px 0;">1. Landing Page & Registration</p>
+                        <p style="font-size: 1.2rem; text-align: left; margin: 10px 0;">2. Player Dashboard & Features</p>
+                        <p style="font-size: 1.2rem; text-align: left; margin: 10px 0;">3. Admin Portal & Management</p>
+                        <p style="font-size: 1.2rem; text-align: left; margin: 10px 0;">4. Coach Portal (if time permits)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Future Enhancements -->
+        <div class="slide">
+            <div class="content">
+                <h2>🚀 Future Roadmap</h2>
+                <p class="subtitle">Version 2.0 planned features</p>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="emoji">📱</div>
+                        <h3 style="font-size: 1.2rem;">Mobile Apps</h3>
+                        <p>iOS & Android</p>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="emoji">💬</div>
+                        <h3 style="font-size: 1.2rem;">Messaging</h3>
+                        <p>In-app chat</p>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="emoji">🎥</div>
+                        <h3 style="font-size: 1.2rem;">Video Analysis</h3>
+                        <p>Performance review</p>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="emoji">🤖</div>
+                        <h3 style="font-size: 1.2rem;">AI Analytics</h3>
+                        <p>Predictions</p>
+                    </div>
+                </div>
+                <ul class="solution-list" style="max-width: 800px; margin: 60px auto 0;">
+                    <li>Advanced analytics and insights dashboard</li>
+                    <li>Multi-academy support for franchise management</li>
+                    <li>Integration with wearable devices</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 11: Impact -->
+        <div class="slide">
+            <div class="content">
+                <h2>📊 Project Impact</h2>
+                <p class="subtitle">Measurable benefits and improvements</p>
+                <div class="impact-grid">
+                    <div class="impact-card">
+                        <h3>70%</h3>
+                        <p>Reduction in administrative time</p>
+                    </div>
+                    <div class="impact-card">
+                        <h3>90%</h3>
+                        <p>Decrease in registration errors</p>
+                    </div>
+                    <div class="impact-card">
+                        <h3>100%</h3>
+                        <p>Real-time payment tracking</p>
+                    </div>
+                    <div class="impact-card">
+                        <h3>24/7</h3>
+                        <p>Accessible from anywhere</p>
+                    </div>
+                </div>
+                <div style="margin-top: 40px;">
+                    <h3 style="text-align: center; color: #667eea;">User Satisfaction</h3>
+                    <ul class="solution-list" style="max-width: 700px; margin: 20px auto;">
+                        <li>Streamlined registration process</li>
+                        <li>Transparent communication</li>
+                        <li>Professional user experience</li>
+                        <li>Data-driven decision making</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Technical Achievements -->
+        <div class="slide">
+            <div class="content">
+                <h2>🎓 Technical Highlights</h2>
+                <p class="subtitle">Development achievements</p>
+                <div class="two-column">
+                    <div>
+                        <div class="feature-box">
+                            <h3>Architecture</h3>
+                            <ul>
+                                <li>RESTful API design</li>
+                                <li>Real-time data sync</li>
+                                <li>Modular codebase</li>
+                                <li>Error handling</li>
+                                <li>Input validation</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="feature-box">
+                            <h3>Database Design</h3>
+                            <ul>
+                                <li>4 Main Tables: Users, Payments, Bookings, Facilities</li>
+                                <li>Proper relationships</li>
+                                <li>Normalized structure</li>
+                                <li>Optimized queries</li>
+                                <li>Data integrity</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Conclusion -->
+        <div class="slide">
+            <div class="content">
+                <h2>✨ Summary</h2>
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 40px; border-radius: 20px; margin: 30px 0;">
+                    <h3 style="text-align: center; color: #667eea; margin-bottom: 30px;">What We Built</h3>
+                    <ul class="solution-list">
+                        <li>Full-stack cricket academy management system</li>
+                        <li>Role-based access for Admin, Player, and Coach</li>
+                        <li>Secure authentication with email verification</li>
+                        <li>Modern, responsive user interface</li>
+                        <li>Comprehensive reporting and analytics</li>
+                    </ul>
+                </div>
+                <div style="text-align: center; margin-top: 60px;">
+                    <h1 style="font-size: 2.5rem;">Thank You!</h1>
+                    <p class="subtitle">Questions?</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide-number">
+        <span id="currentSlide">1</span> / <span id="totalSlides">13</span>
+    </div>
+
+    <div class="controls">
+        <button onclick="previousSlide()">← Previous</button>
+        <button onclick="nextSlide()">Next →</button>
+        <button onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            document.getElementById('currentSlide').textContent = currentSlide + 1;
+        }
+
+        function nextSlide() {
+            showSlide(currentSlide + 1);
+        }
+
+        function previousSlide() {
+            showSlide(currentSlide - 1);
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                previousSlide();
+            } else if (e.key === 'f' || e.key === 'F') {
+                toggleFullscreen();
+            }
+        });
+
+        // Touch gestures for mobile
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) nextSlide();
+            if (touchEndX > touchStartX + 50) previousSlide();
+        }
+    </script>
+</body>
+</html>

@@ -57,6 +57,69 @@ export class AuthController {
         const { name, email, password, phone, role, adminCode } = req.body;
 
         try {
+            // Input validation
+            const validationErrors: string[] = [];
+
+            // Validate name
+            if (!name || typeof name !== 'string') {
+                validationErrors.push('Name is required');
+            } else if (name.trim().length < 2) {
+                validationErrors.push('Name must be at least 2 characters');
+            } else if (name.length > 50) {
+                validationErrors.push('Name must be less than 50 characters');
+            } else if (!/^[a-zA-Z\s]+$/.test(name)) {
+                validationErrors.push('Name can only contain letters and spaces');
+            }
+
+            // Validate email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email || typeof email !== 'string') {
+                validationErrors.push('Email is required');
+            } else if (!emailRegex.test(email)) {
+                validationErrors.push('Please enter a valid email address');
+            }
+
+            // Validate password
+            if (!password || typeof password !== 'string') {
+                validationErrors.push('Password is required');
+            } else {
+                if (password.length < 8) {
+                    validationErrors.push('Password must be at least 8 characters');
+                }
+                if (!/[A-Z]/.test(password)) {
+                    validationErrors.push('Password must contain at least one uppercase letter');
+                }
+                if (!/[a-z]/.test(password)) {
+                    validationErrors.push('Password must contain at least one lowercase letter');
+                }
+                if (!/[0-9]/.test(password)) {
+                    validationErrors.push('Password must contain at least one number');
+                }
+            }
+
+            // Validate phone
+            const phoneRegex = /^[+]?[\d\s-]{10,}$/;
+            if (!phone || typeof phone !== 'string') {
+                validationErrors.push('Phone number is required');
+            } else if (!phoneRegex.test(phone)) {
+                validationErrors.push('Please enter a valid phone number');
+            }
+
+            // Validate role
+            const validRoles = [UserRole.PLAYER, UserRole.COACH, UserRole.ADMIN];
+            if (!role || !validRoles.includes(role)) {
+                validationErrors.push('Invalid role selected');
+            }
+
+            // Return validation errors if any
+            if (validationErrors.length > 0) {
+                res.status(400).json({
+                    message: 'Validation failed',
+                    errors: validationErrors
+                });
+                return;
+            }
+
             // Validate Admin Secret Code if registering as Admin
             if (role === UserRole.ADMIN) {
                 if (adminCode !== process.env.ADMIN_SECRET_CODE) {
@@ -81,10 +144,10 @@ export class AuthController {
             const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
 
             // Setup user properties (either new or overwriting existing unverified)
-            user.name = name;
-            user.email = email;
+            user.name = name.trim();
+            user.email = email.toLowerCase().trim();
             user.password = await bcrypt.hash(password, 10);
-            user.phone = phone;
+            user.phone = phone.trim();
             user.role = role || UserRole.PLAYER; // Default to player if not specified
             user.status = UserStatus.ACTIVE;
             user.verificationToken = verificationToken;

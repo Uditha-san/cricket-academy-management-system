@@ -14,7 +14,7 @@ export default function LandingPage() {
         {
             icon: BarChart3,
             title: 'Player Statistics',
-            description: 'Track your progress with detailed performance analytics and insights.',
+            description: 'Track your progress with detailed performance metrics and insights.',
             color: 'from-blue-400 to-cyan-500'
         },
         {

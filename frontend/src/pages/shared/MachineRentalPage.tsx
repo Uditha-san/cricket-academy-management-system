@@ -8,13 +8,15 @@ interface MachineRentalPageProps {
 export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps) {
   const [selectedMachine, setSelectedMachine] = useState('');
   const [selectedDuration, setSelectedDuration] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [startTime, setStartTime] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const machines = [
     {
       id: 'bowling-pro',
       name: 'Professional Bowling Machine',
-  image: '/assets/bowling machine.jpg',
+      image: '/assets/bowling machine.jpg',
       description: 'High-speed bowling machine with variable speed and swing control',
       features: ['Speed: 80-150 km/h', 'Swing Control', 'Length Adjustment', 'Auto Ball Feeder'],
       price: 1500
@@ -22,7 +24,7 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
     {
       id: 'batting-trainer',
       name: 'Batting Training Machine',
-  image: '/assets/battingmachines.webp',
+      image: '/assets/battingmachines.webp',
       description: 'Perfect for batting practice with consistent line and length',
       features: ['Consistent Delivery', 'Adjustable Height', 'Easy Setup', 'Ball Return'],
       price: 2500
@@ -30,7 +32,7 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
     {
       id: 'spin-master',
       name: 'Spin Bowling Simulator',
-  image: '/assets/spin.jpg',
+      image: '/assets/spin.jpg',
       description: 'Advanced spin bowling machine for specialized training',
       features: ['Multiple Spin Types', 'Variable Turn', 'Programmable', 'Remote Control'],
       price: 2500
@@ -54,8 +56,8 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
 
   const selectedMachineData = machines.find(machine => machine.id === selectedMachine);
   const selectedDurationData = durations.find(duration => duration.id === selectedDuration);
-  const totalPrice = selectedMachineData && selectedDurationData 
-    ? selectedMachineData.price * selectedDurationData.multiplier 
+  const totalPrice = selectedMachineData && selectedDurationData
+    ? selectedMachineData.price * selectedDurationData.multiplier
     : 0;
 
   if (showConfirmation) {
@@ -71,8 +73,9 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
           </p>
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-600">
-              <strong>Machine:</strong> {selectedMachineData?.name}<br/>
-              <strong>Duration:</strong> {selectedDurationData?.label}<br/>
+              <strong>Machine:</strong> {selectedMachineData?.name}<br />
+              <strong>Date:</strong> {selectedDate}<br />
+              <strong>Duration:</strong> {selectedDurationData?.label}<br />
               <strong>Total Price:</strong> Rs.{totalPrice}
             </p>
           </div>
@@ -105,11 +108,10 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
                 <button
                   key={machine.id}
                   onClick={() => setSelectedMachine(machine.id)}
-                  className={`w-full p-6 rounded-xl border-2 transition-colors text-left ${
-                    selectedMachine === machine.id
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  className={`w-full p-6 rounded-xl border-2 transition-colors text-left ${selectedMachine === machine.id
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                    }`}
                 >
                   <div className="flex flex-col md:flex-row">
                     <img
@@ -145,17 +147,16 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
 
           {selectedMachine && (
             <div className="bg-white rounded-xl p-6 shadow-lg">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Duration</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Duration & Time</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {durations.map((duration) => (
                   <button
                     key={duration.id}
                     onClick={() => setSelectedDuration(duration.id)}
-                    className={`p-4 rounded-lg border-2 transition-colors ${
-                      selectedDuration === duration.id
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`p-4 rounded-lg border-2 transition-colors ${selectedDuration === duration.id
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      }`}
                   >
                     <Clock className="w-6 h-6 mx-auto mb-2 text-green-600" />
                     <p className="font-semibold text-gray-900">{duration.label}</p>
@@ -165,6 +166,28 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
                   </button>
                 ))}
               </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -173,7 +196,7 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl p-6 shadow-lg sticky top-24">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Rental Summary</h2>
-            
+
             {selectedMachine && selectedDuration ? (
               <div className="space-y-4">
                 <div>
@@ -188,6 +211,14 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
                 <div>
                   <p className="text-sm text-gray-600">Duration</p>
                   <p className="font-semibold text-gray-900">{selectedDurationData?.label}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Date</p>
+                  <p className="font-semibold text-gray-900">{selectedDate || 'Not selected'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Start Time</p>
+                  <p className="font-semibold text-gray-900">{startTime || 'Not selected'}</p>
                 </div>
                 <div className="border-t pt-4">
                   <div className="flex justify-between">

@@ -1,9 +1,8 @@
-import { useState } from 'react';
-import { Calendar, Wrench, ShoppingBag, TrendingUp, Trophy, Target, ArrowLeft } from 'lucide-react';
+import { Calendar, Wrench, ShoppingBag, TrendingUp, Trophy, Target } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useStats } from '../../contexts/StatsContext';
-import ImprovementSection from '../../components/player/ImprovementSection';
+
 
 interface PlayerDashboardProps {
   onNavigate: (page: string) => void;
@@ -13,8 +12,6 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
   const { user } = useAuth();
   const { bookings, feedbacks } = useData();
   const { getStats } = useStats();
-  const [view, setView] = useState<'dashboard' | 'improvement'>('dashboard');
-
   const myBookings = bookings.filter(b => b.userId === user?.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const upcomingBookings = myBookings.filter(b => new Date(b.date) >= new Date()).slice(0, 2);
@@ -32,8 +29,8 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
   const playerStats = {
     totalSessions: totalSessions,
     averageScore: avgScore,
-    improvement: '+5%', // Placeholder
-    rank: '15/120' // Placeholder
+    highestScore: stats ? stats.batting.highestScore : 0,
+    totalWickets: stats ? stats.bowling.totalWickets : 0
   };
 
   const quickActions = [
@@ -63,25 +60,9 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
       title: 'View Stats',
       description: 'Track your progress',
       icon: TrendingUp,
-      color: 'bg-purple-500',
-      action: () => setView('improvement')
+      color: 'bg-purple-500'
     }
   ];
-
-  if (view === 'improvement' && user) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24">
-        <button
-          onClick={() => setView('dashboard')}
-          className="flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Dashboard
-        </button>
-        <ImprovementSection playerId={user.id} />
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24">
@@ -112,14 +93,14 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
           </div>
         </div>
         <div
-          onClick={() => setView('improvement')}
+          onClick={() => onNavigate('stats')}
           className="bg-white rounded-xl p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow ring-2 ring-transparent hover:ring-blue-500"
         >
           <div className="flex items-center">
             <TrendingUp className="w-8 h-8 text-blue-500 mr-3" />
             <div>
-              <p className="text-2xl font-bold text-green-600">{playerStats.improvement}</p>
-              <p className="text-sm text-gray-600">Improvement</p>
+              <p className="text-2xl font-bold text-green-600">{playerStats.highestScore}</p>
+              <p className="text-sm text-gray-600">Highest Score</p>
             </div>
           </div>
         </div>
@@ -127,8 +108,8 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
           <div className="flex items-center">
             <Trophy className="w-8 h-8 text-purple-500 mr-3" />
             <div>
-              <p className="text-2xl font-bold text-gray-900">{playerStats.rank}</p>
-              <p className="text-sm text-gray-600">Current Rank</p>
+              <p className="text-2xl font-bold text-gray-900">{playerStats.totalWickets}</p>
+              <p className="text-sm text-gray-600">Total Wickets</p>
             </div>
           </div>
         </div>
@@ -141,7 +122,7 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
           return (
             <button
               key={action.id}
-              onClick={() => action.action ? action.action() : onNavigate(action.id)}
+              onClick={() => onNavigate(action.id)}
               className="bg-white rounded-xl p-4 shadow-lg hover:shadow-xl transition-shadow"
             >
               <div className={`w-10 h-10 ${action.color} rounded-lg flex items-center justify-center mb-3 mx-auto`}>
@@ -196,7 +177,7 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
                 </p>
               </div>
               <button
-                onClick={() => setView('improvement')}
+                onClick={() => onNavigate('stats')}
                 className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors"
               >
                 View All Feedback

@@ -83,6 +83,18 @@ export class User {
     @Column({ type: "decimal", precision: 10, scale: 2, default: 0 })
     totalSpent!: number;
 
+    @Column({ nullable: true })
+    @IsOptional()
+    preferredPosition!: string;
+
+    @Column({ nullable: true })
+    @IsOptional()
+    address!: string;
+
+    @Column({ nullable: true })
+    @IsOptional()
+    emergencyContact!: string;
+
     @CreateDateColumn()
     joinDate!: Date;
 
