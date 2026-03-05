@@ -10,11 +10,16 @@ export interface User {
     status: 'Active' | 'Inactive';
     joinDate: string;
     avatar?: string;
-    // Stats-related info
-    battingStyle?: string;
-    bowlingStyle?: string;
-    totalBookings: number;
-    totalSpent: number;
+    // Stats-related info removed from root, added in profile
+    playerProfile?: {
+        battingStyle?: string;
+        bowlingStyle?: string;
+        totalBookings: number;
+        totalSpent: number;
+        preferredPosition?: string;
+        address?: string;
+        emergencyContact?: string;
+    };
 }
 
 export interface CoachFeedback {
@@ -47,9 +52,8 @@ interface DataContextType {
     users: User[];
     bookings: Booking[];
     feedbacks: CoachFeedback[];
-    addUser: (user: User) => void;
-    updateUser: (user: User) => void;
-    deleteUser: (id: string) => void;
+    // Admin user functions removed, as they will be handled by specific API services
+    // logged in user profile updates handled separately if needed, or we can keep a simple setProfile
     addBooking: (booking: Booking) => void;
     updateBookingStatus: (id: string, status: Booking['status']) => void;
     addFeedback: (feedback: CoachFeedback) => void;
@@ -147,27 +151,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
     };
 
-    const addUser = (user: User) => {
-        setUsers(prev => [...prev, user]);
-    };
-
-    const updateUser = (updatedUser: User) => {
-        setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-    };
-
-    const deleteUser = (id: string) => {
-        setUsers(prev => prev.filter(u => u.id !== id));
-    };
+    // User management functions removed
 
     const addBooking = (booking: Booking) => {
         setBookings(prev => [booking, ...prev]);
         // Also update total bookings/spent for the user
         setUsers(prev => prev.map(u => {
-            if (u.id === booking.userId) {
+            if (u.id === booking.userId && u.playerProfile) {
                 return {
                     ...u,
-                    totalBookings: u.totalBookings + 1,
-                    totalSpent: u.totalSpent + booking.amount
+                    playerProfile: {
+                        ...u.playerProfile,
+                        totalBookings: u.playerProfile.totalBookings + 1,
+                        totalSpent: u.playerProfile.totalSpent + booking.amount
+                    }
                 };
             }
             return u;
@@ -187,9 +184,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
             users,
             bookings,
             feedbacks,
-            addUser,
-            updateUser,
-            deleteUser,
             addBooking,
             updateBookingStatus,
             addFeedback

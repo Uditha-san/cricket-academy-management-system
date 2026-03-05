@@ -1,21 +1,37 @@
-import { useState } from 'react';
-import { Users, Calendar, TrendingUp, MessageSquare, Search, Filter, Edit } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, Calendar, TrendingUp, MessageSquare, Edit } from 'lucide-react';
 import { useStats, PlayerStats } from '../../contexts/StatsContext';
-import { useData } from '../../contexts/DataContext';
+import api from '../../api/axios';
 import PlayerStatsModal from '../../components/stats/PlayerStatsModal';
 
 export default function CoachDashboard() {
   const { getStats, updateStats } = useStats();
-  const { users } = useData();
+  const [players, setPlayers] = useState<any[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
+  const [area, setArea] = useState('Batting');
+  const [rating, setRating] = useState(5);
+  const [isSending, setIsSending] = useState(false);
+
+  const [sentFeedbacks, setSentFeedbacks] = useState<any[]>([]);
+  const [receivedMessages, setReceivedMessages] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'messages'>('overview');
 
   // Stats Modal State
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null);
 
-  // Filter for players only
-  const players = users.filter(u => u.role === 'player');
+  useEffect(() => {
+    Promise.all([
+      api.get('/coach/players'),
+      api.get('/coach/feedback-history'),
+      api.get('/coach/messages')
+    ]).then(([playersRes, fbRes, msgRes]) => {
+      setPlayers(playersRes.data);
+      setSentFeedbacks(fbRes.data);
+      setReceivedMessages(msgRes.data);
+    }).catch(console.error);
+  }, []);
 
   const upcomingSessions = [
     {
@@ -44,11 +60,28 @@ export default function CoachDashboard() {
     }
   ];
 
-  const handleSendFeedback = (e: React.FormEvent) => {
+  const handleSendFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedPlayer && feedback.trim()) {
-      alert(`Feedback sent to ${players.find(p => p.id === selectedPlayer)?.name}`);
-      setFeedback('');
+      setIsSending(true);
+      try {
+        await api.post(`/coach/players/${selectedPlayer}/feedback`, {
+          area,
+          feedback,
+          rating
+        });
+        alert(`Feedback sent to ${players.find(p => p.id === selectedPlayer)?.name}`);
+        setFeedback('');
+        setRating(5);
+        setArea('Batting');
+        // Refresh feedback history
+        api.get('/coach/feedback-history').then(res => setSentFeedbacks(res.data));
+      } catch (err) {
+        console.error("Failed to send feedback", err);
+        alert("Failed to send feedback");
+      } finally {
+        setIsSending(false);
+      }
     }
   };
 
@@ -107,26 +140,39 @@ export default function CoachDashboard() {
         {/* Players List */}
         <div className="bg-white rounded-xl p-6 shadow-lg">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Player Overview</h2>
-            <div className="flex space-x-2">
-              <button className="p-2 text-gray-400 hover:text-gray-600">
-                <Search className="w-5 h-5" />
+            <h2 className="text-xl font-semibold text-gray-900">Coach Workspace</h2>
+            <div className="flex bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`px-4 py-2 text-sm font-medium rounded-md ${activeTab === 'overview' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Players
               </button>
-              <button className="p-2 text-gray-400 hover:text-gray-600">
-                <Filter className="w-5 h-5" />
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`px-4 py-2 text-sm font-medium rounded-md ${activeTab === 'history' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Sent Feedback
+              </button>
+              <button
+                onClick={() => setActiveTab('messages')}
+                className={`px-4 py-2 text-sm font-medium rounded-md ${activeTab === 'messages' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'} relative`}
+              >
+                Messages
+                {receivedMessages.length > 0 && <span className="absolute top-0 right-0 -mt-1 -mr-1 w-2 h-2 bg-red-500 rounded-full"></span>}
               </button>
             </div>
           </div>
           <div className="space-y-4">
-            {players.map((player) => {
+            {activeTab === 'overview' && players.map((player) => {
               const stats = getStats(player.id);
               return (
                 <div
                   key={player.id}
                   onClick={() => setSelectedPlayer(player.id)}
                   className={`p-4 rounded-lg border cursor-pointer transition-colors ${selectedPlayer === player.id
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-gray-200 hover:bg-gray-50'
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-200 hover:bg-gray-50'
                     }`}
                 >
                   <div className="flex items-center justify-between">
@@ -161,6 +207,59 @@ export default function CoachDashboard() {
                 </div>
               );
             })}
+
+            {activeTab === 'history' && (
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                {sentFeedbacks.length > 0 ? (
+                  sentFeedbacks.map((fb, idx) => (
+                    <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                      <div className="flex justify-between items-center mb-2">
+                        <div>
+                          <p className="font-semibold text-gray-900">To: {fb.player.name}</p>
+                          <p className="text-xs text-gray-500">{new Date(fb.createdAt).toLocaleString()}</p>
+                        </div>
+                        <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded font-medium">{fb.area}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 italic border-l-2 border-purple-200 pl-2">"{fb.feedback}"</p>
+                      <div className="mt-2 text-xs text-gray-500 text-right">
+                        Rating: {fb.rating}/5 • Status: {fb.isRead ? <span className="text-green-600">Read</span> : <span className="text-gray-400">Unread</span>}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">No feedback sent yet.</p>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'messages' && (
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                {receivedMessages.length > 0 ? (
+                  receivedMessages.map((msg, idx) => (
+                    <div key={idx} className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <div className="flex justify-between items-center mb-2">
+                        <div>
+                          <p className="font-semibold text-gray-900">From: {msg.playerName}</p>
+                          <p className="text-xs text-gray-500">{new Date(msg.createdAt).toLocaleString()}</p>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-800">"{msg.content}"</p>
+                      <button
+                        onClick={() => {
+                          setSelectedPlayer(msg.playerId);
+                          setActiveTab('overview');
+                        }}
+                        className="mt-3 text-xs bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-50"
+                      >
+                        Write Feedback to Player
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">No messages received.</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -193,6 +292,37 @@ export default function CoachDashboard() {
                 </button>
 
                 <form onSubmit={handleSendFeedback}>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
+                      <select
+                        value={area}
+                        onChange={(e) => setArea(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                      >
+                        <option value="Batting">Batting</option>
+                        <option value="Bowling">Bowling</option>
+                        <option value="Fielding">Fielding</option>
+                        <option value="Fitness">Fitness</option>
+                        <option value="General">General</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Rating (Out of 5)</label>
+                      <select
+                        value={rating}
+                        onChange={(e) => setRating(Number(e.target.value))}
+                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                      >
+                        <option value={1}>1 - Needs Work</option>
+                        <option value={2}>2 - Below Average</option>
+                        <option value={3}>3 - Average</option>
+                        <option value={4}>4 - Good</option>
+                        <option value={5}>5 - Excellent</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Send Feedback / Performance Note
                   </label>
@@ -205,11 +335,11 @@ export default function CoachDashboard() {
                   />
                   <button
                     type="submit"
-                    disabled={!feedback.trim()}
+                    disabled={!feedback.trim() || isSending}
                     className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-800 focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
                     <MessageSquare className="w-4 h-4 mr-2" />
-                    Send Feedback
+                    {isSending ? 'Sending...' : 'Send Feedback'}
                   </button>
                 </form>
               </div>

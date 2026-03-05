@@ -8,12 +8,14 @@ interface PlayerProfilePageProps {
 }
 
 export default function PlayerProfilePage({ onNavigate }: PlayerProfilePageProps) {
-  const { user: authUser } = useAuth();
-  const { users, updateUser, bookings } = useData();
+  const { user: authUser } = useAuth() as any;
+  const { bookings } = useData();
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Find the current user in the centralized data
-  const currentUser = users.find(u => u.id === authUser?.id);
+  // Local state for the current user's profile
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const [profile, setProfile] = useState({
     name: '',
@@ -27,20 +29,48 @@ export default function PlayerProfilePage({ onNavigate }: PlayerProfilePageProps
     preferredPosition: 'All-rounder'
   });
 
-  // Update local state when currentUser changes (e.g. loaded)
   useEffect(() => {
-    if (currentUser) {
-      setProfile(prev => ({
-        ...prev,
-        name: currentUser.name,
-        email: currentUser.email,
-        phone: currentUser.phone,
-        battingStyle: currentUser.battingStyle || 'Right-handed',
-        bowlingStyle: currentUser.bowlingStyle || 'Right-arm Medium',
-        // Preserve other fields if they aren't in User interface yet
-      }));
+    const fetchProfile = async () => {
+      try {
+        const { default: api } = await import('../../api/axios');
+        const response = await api.get('/users/profile');
+        setCurrentUser(response.data);
+
+        setProfile({
+          name: response.data.name || '',
+          email: response.data.email || '',
+          phone: response.data.phone || '',
+          dateOfBirth: response.data.playerProfile?.dateOfBirth || '1995-05-15',
+          address: response.data.playerProfile?.address || 'Colombo, Sri Lanka',
+          emergencyContact: response.data.playerProfile?.emergencyContact || '+94 77 123 4567',
+          battingStyle: response.data.playerProfile?.battingStyle || 'Right-handed',
+          bowlingStyle: response.data.playerProfile?.bowlingStyle || 'Right-arm Medium',
+          preferredPosition: response.data.playerProfile?.preferredPosition || 'All-rounder'
+        });
+      } catch (err: any) {
+        console.error("Failed to load profile", err);
+        setError("Failed to load profile data.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (authUser?.id && authUser.id !== 'guest') {
+      fetchProfile();
+    } else {
+      setIsLoading(false);
+      // For guest users, just set from authUser
+      if (authUser?.id === 'guest') {
+        setCurrentUser(authUser);
+        setProfile(prev => ({
+          ...prev,
+          name: authUser.name,
+          email: authUser.email,
+          phone: authUser.phone || '',
+        }));
+      }
     }
-  }, [currentUser]);
+  }, [authUser]);
 
   const myBookings = bookings.filter(b => b.userId === authUser?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -53,18 +83,28 @@ export default function PlayerProfilePage({ onNavigate }: PlayerProfilePageProps
     status: 'Paid'
   }));
 
-  const handleSave = () => {
-    if (currentUser) {
-      updateUser({
-        ...currentUser,
+  const handleSave = async () => {
+    if (!currentUser || currentUser.id === 'guest') return;
+
+    try {
+      const { default: api } = await import('../../api/axios');
+      const response = await api.put('/users/profile', {
         name: profile.name,
-        email: profile.email,
         phone: profile.phone,
+        dateOfBirth: profile.dateOfBirth,
         battingStyle: profile.battingStyle,
         bowlingStyle: profile.bowlingStyle,
+        preferredPosition: profile.preferredPosition,
+        address: profile.address,
+        emergencyContact: profile.emergencyContact
       });
+
+      setCurrentUser(response.data.user);
       setIsEditing(false);
       alert('Profile updated successfully!');
+    } catch (err) {
+      console.error("Failed to update profile", err);
+      alert('Failed to update profile.');
     }
   };
 
@@ -75,7 +115,9 @@ export default function PlayerProfilePage({ onNavigate }: PlayerProfilePageProps
     }));
   };
 
-  if (!currentUser) return <div>Loading...</div>;
+  if (isLoading) return <div className="flex justify-center items-center py-20">Loading profile...</div>;
+  if (error) return <div className="text-red-500 text-center py-10">{error}</div>;
+  if (!currentUser) return <div className="text-center py-10">Profile not found.</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24">
@@ -277,6 +319,94 @@ export default function PlayerProfilePage({ onNavigate }: PlayerProfilePageProps
           </div>
         </div>
       </div>
+
+      {currentUser?.performance && (
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Overall Performance Stats</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-green-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-green-700">{currentUser.performance.battingAverage}</p>
+              <p className="text-xs text-green-600 uppercase tracking-wider font-semibold mt-1">Batting Avg</p>
+            </div>
+            <div className="bg-green-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-green-700">{currentUser.performance.strikeRate}</p>
+              <p className="text-xs text-green-600 uppercase tracking-wider font-semibold mt-1">Strike Rate</p>
+            </div>
+            <div className="bg-purple-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-purple-700">{currentUser.performance.bowlingAverage}</p>
+              <p className="text-xs text-purple-600 uppercase tracking-wider font-semibold mt-1">Bowling Avg</p>
+            </div>
+            <div className="bg-purple-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-purple-700">{currentUser.performance.economyRate}</p>
+              <p className="text-xs text-purple-600 uppercase tracking-wider font-semibold mt-1">Economy Rate</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-gray-700">{currentUser.performance.matchesPlayed}</p>
+              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mt-1">Matches Played</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-gray-700">{currentUser.performance.highestScore}</p>
+              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mt-1">Highest Score</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-gray-700">{currentUser.performance.totalWickets}</p>
+              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mt-1">Total Wickets</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-gray-700">{currentUser.performance.catches}</p>
+              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mt-1">Catches</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Match History Table */}
+      {currentUser?.matchPerformances && currentUser.matchPerformances.length > 0 && (
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">Match History</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase">Date</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase">Opponent</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase">Batting</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase">Bowling</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase">Fielding</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {currentUser.matchPerformances
+                  .sort((a: any, b: any) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime())
+                  .map((match: any) => {
+                    const bowOvers = Math.floor(match.ballsBowled / 6);
+                    const bowBalls = match.ballsBowled % 6;
+                    const oversStr = `${bowOvers}.${bowBalls}`;
+                    return (
+                      <tr key={match.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-900">{match.matchDate}</td>
+                        <td className="px-4 py-3 text-gray-900 font-medium">{match.opponent}</td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {match.runsScored} ({match.ballsFaced}){match.isDismissed ? '' : '*'} <br />
+                          <span className="text-xs text-gray-500">{match.fours}x4, {match.sixes}x6</span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {match.wicketsTaken}/{match.runsConceded} <br />
+                          <span className="text-xs text-gray-500">({oversStr} ov, {match.maidens} M)</span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {match.catches} C, {match.stumpings} St
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* History Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

@@ -1,73 +1,86 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Search, CreditCard as Edit2, Trash2, Users, Mail, Phone, TrendingUp } from 'lucide-react';
-import { useStats, PlayerStats } from '../../contexts/StatsContext';
-import { useData, User } from '../../contexts/DataContext';
-import PlayerStatsModal from '../../components/stats/PlayerStatsModal';
+import { adminApi } from '../../api/admin';
+import PlayerEditModal from './PlayerEditModal';
+import PlayerPerformanceModal from './PlayerPerformanceModal';
 
 interface ManagePlayersPageProps {
   onNavigate: (page: string) => void;
 }
 
 export default function ManagePlayersPage({ onNavigate }: ManagePlayersPageProps) {
-  const { users, updateUser, deleteUser } = useData();
-  const { getStats, updateStats } = useStats();
-
-  // Filter for players only
-  const players = users.filter(u => u.role === 'player');
+  const [players, setPlayers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingPlayer, setEditingPlayer] = useState<User | null>(null);
+  const [editingPlayer, setEditingPlayer] = useState<any>(null);
 
-  // Stats Modal State
-  const [showStatsModal, setShowStatsModal] = useState(false);
-  const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null);
+  // Performance Modal State
+  const [showPerformanceModal, setShowPerformanceModal] = useState(false);
+  const [performancePlayerId, setPerformancePlayerId] = useState<string | null>(null);
 
-  const handleEdit = (player: User) => {
+  useEffect(() => {
+    fetchPlayers();
+  }, []);
+
+  const fetchPlayers = async () => {
+    setIsLoading(true);
+    try {
+      const data = await adminApi.getPlayers();
+      setPlayers(data);
+    } catch (err: any) {
+      console.error("Failed to fetch players", err);
+      setError('Failed to load players');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEdit = (player: any) => {
     setEditingPlayer(player);
     setShowEditModal(true);
   };
 
-  const handleStatsOpen = (playerId: string) => {
-    setStatsPlayerId(playerId);
-    setShowStatsModal(true);
+  const handlePerformanceOpen = (playerId: string) => {
+    setPerformancePlayerId(playerId);
+    setShowPerformanceModal(true);
   };
 
-  const handleStatsSave = (newStats: PlayerStats) => {
-    if (statsPlayerId) {
-      updateStats(statsPlayerId, newStats);
-      setShowStatsModal(false);
-      setStatsPlayerId(null);
-    }
-  };
-
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this player?')) {
-      deleteUser(id);
+      try {
+        await adminApi.deletePlayer(id);
+        setPlayers(prev => prev.filter(p => p.id !== id));
+      } catch (err) {
+        console.error("Delete failed", err);
+        alert('Failed to delete player');
+      }
     }
   };
 
-  const handleUpdatePlayer = (updatedPlayer: User) => {
-    updateUser(updatedPlayer);
-    setShowEditModal(false);
-    setEditingPlayer(null);
-  };
-
-  const togglePlayerStatus = (id: string) => {
-    const player = players.find(p => p.id === id);
-    if (player) {
-      updateUser({
-        ...player,
-        status: player.status === 'Active' ? 'Inactive' : 'Active'
-      });
+  const togglePlayerStatus = async (id: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+      await adminApi.updatePlayer(id, { status: newStatus });
+      setPlayers(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
+    } catch (err) {
+      console.error("Status toggle failed", err);
+      alert('Failed to update status');
     }
   };
 
   const filteredPlayers = players.filter(player =>
     player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     player.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    player.phone.includes(searchTerm)
+    (player.phone && player.phone.includes(searchTerm))
   );
+
+  if (isLoading) return <div className="flex justify-center items-center py-20">Loading players...</div>;
+  if (error) return <div className="text-red-500 text-center py-10">{error}</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -104,11 +117,11 @@ export default function ManagePlayersPage({ onNavigate }: ManagePlayersPageProps
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">{player.name}</h3>
-                <p className="text-sm text-gray-600">Member since {player.joinDate}</p>
+                <p className="text-sm text-gray-600">Member since {new Date(player.joinDate).toLocaleDateString()}</p>
               </div>
               <span className={`px-3 py-1 text-xs font-semibold rounded-full ${player.status === 'Active'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
+                ? 'bg-green-100 text-green-800'
+                : 'bg-red-100 text-red-800'
                 }`}>
                 {player.status}
               </span>
@@ -121,17 +134,17 @@ export default function ManagePlayersPage({ onNavigate }: ManagePlayersPageProps
               </div>
               <div className="flex items-center text-sm text-gray-600">
                 <Phone className="w-4 h-4 mr-2" />
-                {player.phone}
+                {player.phone || 'N/A'}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{player.totalBookings}</p>
+                <p className="text-2xl font-bold text-gray-900">{player.playerProfile?.totalBookings || 0}</p>
                 <p className="text-xs text-gray-600">Total Bookings</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">Rs.{player.totalSpent}</p>
+                <p className="text-2xl font-bold text-green-600">Rs.{player.playerProfile?.totalSpent || 0}</p>
                 <p className="text-xs text-gray-600">Total Spent</p>
               </div>
             </div>
@@ -140,21 +153,21 @@ export default function ManagePlayersPage({ onNavigate }: ManagePlayersPageProps
               <div className="text-sm text-gray-600 mb-2">Cricket Style</div>
               <div className="flex space-x-2">
                 <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                  {player.battingStyle || 'N/A'}
+                  {player.playerProfile?.battingStyle || 'N/A'}
                 </span>
                 <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                  {player.bowlingStyle || 'N/A'}
+                  {player.playerProfile?.bowlingStyle || 'N/A'}
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2 mb-2">
               <button
-                onClick={() => handleStatsOpen(player.id)}
+                onClick={() => handlePerformanceOpen(player.id)}
                 className="col-span-2 bg-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors flex items-center justify-center"
               >
                 <TrendingUp className="w-4 h-4 mr-1" />
-                Update Stats
+                Update Performance Stats
               </button>
             </div>
 
@@ -167,10 +180,10 @@ export default function ManagePlayersPage({ onNavigate }: ManagePlayersPageProps
                 Edit
               </button>
               <button
-                onClick={() => togglePlayerStatus(player.id)}
+                onClick={() => togglePlayerStatus(player.id, player.status)}
                 className={`flex-1 py-2 px-4 rounded-lg font-medium focus:ring-2 focus:ring-offset-2 transition-colors ${player.status === 'Active'
-                    ? 'bg-yellow-600 text-white hover:bg-yellow-700 focus:ring-yellow-500'
-                    : 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500'
+                  ? 'bg-yellow-600 text-white hover:bg-yellow-700 focus:ring-yellow-500'
+                  : 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500'
                   }`}
               >
                 {player.status === 'Active' ? 'Deactivate' : 'Activate'}
@@ -186,126 +199,35 @@ export default function ManagePlayersPage({ onNavigate }: ManagePlayersPageProps
         ))}
       </div>
 
-      {/* Edit Modal */}
       {showEditModal && editingPlayer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Edit Player</h2>
-
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              if (editingPlayer) {
-                handleUpdatePlayer(editingPlayer);
-              }
-            }} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-                  <input
-                    type="text"
-                    value={editingPlayer.name}
-                    onChange={(e) => setEditingPlayer(prev => prev ? { ...prev, name: e.target.value } : null)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={editingPlayer.email}
-                    onChange={(e) => setEditingPlayer(prev => prev ? { ...prev, email: e.target.value } : null)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                  <input
-                    type="tel"
-                    value={editingPlayer.phone}
-                    onChange={(e) => setEditingPlayer(prev => prev ? { ...prev, phone: e.target.value } : null)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <select
-                    value={editingPlayer.status}
-                    onChange={(e) => setEditingPlayer(prev => prev ? { ...prev, status: e.target.value as 'Active' | 'Inactive' } : null)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Batting Style</label>
-                  <select
-                    value={editingPlayer.battingStyle || 'Right-handed'}
-                    onChange={(e) => setEditingPlayer(prev => prev ? { ...prev, battingStyle: e.target.value } : null)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="Right-handed">Right-handed</option>
-                    <option value="Left-handed">Left-handed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Bowling Style</label>
-                  <select
-                    value={editingPlayer.bowlingStyle || 'Right-arm Medium'}
-                    onChange={(e) => setEditingPlayer(prev => prev ? { ...prev, bowlingStyle: e.target.value } : null)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="Right-arm Medium">Right-arm Medium</option>
-                    <option value="Right-arm Fast">Right-arm Fast</option>
-                    <option value="Left-arm Medium">Left-arm Medium</option>
-                    <option value="Left-arm Fast">Left-arm Fast</option>
-                    <option value="Right-arm Spin">Right-arm Spin</option>
-                    <option value="Left-arm Spin">Left-arm Spin</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                >
-                  Update Player
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <PlayerEditModal
+          player={editingPlayer}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingPlayer(null);
+          }}
+          onUpdate={() => {
+            setShowEditModal(false);
+            setEditingPlayer(null);
+            fetchPlayers();
+          }}
+        />
       )}
 
-      {/* Stats Modal */}
-      {showStatsModal && statsPlayerId && (
-        <PlayerStatsModal
-          isOpen={showStatsModal}
+      {showPerformanceModal && performancePlayerId && (
+        <PlayerPerformanceModal
+          playerId={performancePlayerId}
+          playerName={players.find(p => p.id === performancePlayerId)?.name || 'Unknown Player'}
+          currentPerformance={players.find(p => p.id === performancePlayerId)?.performance || {}}
           onClose={() => {
-            setShowStatsModal(false);
-            setStatsPlayerId(null);
+            setShowPerformanceModal(false);
+            setPerformancePlayerId(null);
           }}
-          playerId={statsPlayerId}
-          playerName={players.find(p => p.id === statsPlayerId)?.name || 'Unknown Player'}
-          currentStats={getStats(statsPlayerId)}
-          onSave={handleStatsSave}
+          onUpdate={() => {
+            setShowPerformanceModal(false);
+            setPerformancePlayerId(null);
+            fetchPlayers();
+          }}
         />
       )}
 
@@ -336,7 +258,7 @@ export default function ManagePlayersPage({ onNavigate }: ManagePlayersPageProps
             <Users className="w-8 h-8 text-orange-500 mr-3" />
             <div>
               <p className="text-2xl font-bold text-gray-900">
-                {players.reduce((sum, player) => sum + player.totalBookings, 0)}
+                {players.reduce((sum, player) => sum + (Number(player.playerProfile?.totalBookings) || 0), 0)}
               </p>
               <p className="text-sm text-gray-600">Total Bookings</p>
             </div>
@@ -347,7 +269,7 @@ export default function ManagePlayersPage({ onNavigate }: ManagePlayersPageProps
             <Users className="w-8 h-8 text-purple-500 mr-3" />
             <div>
               <p className="text-2xl font-bold text-gray-900">
-                Rs.{players.reduce((sum, player) => sum + player.totalSpent, 0)}
+                Rs.{players.reduce((sum, player) => sum + (Number(player.playerProfile?.totalSpent) || 0), 0)}
               </p>
               <p className="text-sm text-gray-600">Total Revenue</p>
             </div>

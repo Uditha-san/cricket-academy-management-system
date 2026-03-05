@@ -1,0 +1,7 @@
+﻿[dotenv@17.2.3] injecting env (11) from .env -- tip: ≡ƒ¢á∩╕Å  run anywhere with `dotenvx run -- yourcommand`
+Users and their DOBs:
+User 08a181ea-aec4-4a05-b3ae-d2343326d10a (player): name: Uditha Sandeepa, verify: true, Profile DOB: undefined
+User 1478734a-4bda-47cf-93c2-0f0ceccd8ded (admin): name: Lavindi Tharunya, verify: true, Profile DOB: undefined
+User 1bd81755-93f9-4293-9017-92b432c3d11d (player): name: Sandeepa, verify: true, Profile DOB: 2002-10-22
+User 4a498d6b-9023-47e7-abfa-b511dd826d86 (player): name: Test Register Player, verify: false, Profile DOB: 2002-05-10
+User 6d9008d9-423e-4f9b-adb9-395d16c4c559 (player): name: Test Register Player, verify: false, Profile DOB: undefined

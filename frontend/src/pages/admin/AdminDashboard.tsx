@@ -1,38 +1,47 @@
 import { Calendar, Package, Users, DollarSign, BarChart3 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { adminApi } from '../../api/admin';
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
 }
 
 export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
+  const [totalPlayers, setTotalPlayers] = useState<number | string>('Loading...');
+
+  useEffect(() => {
+    adminApi.getPlayers().then(players => {
+      setTotalPlayers(players.length);
+    }).catch(console.error);
+  }, []);
   const stats = [
-    { 
-      title: 'Total Bookings', 
-      value: '156', 
-      change: '+12%', 
-      icon: Calendar, 
-      color: 'text-blue-600 bg-blue-100' 
+    {
+      title: 'Total Bookings',
+      value: '156',
+      change: '+12%',
+      icon: Calendar,
+      color: 'text-blue-600 bg-blue-100'
     },
-    { 
-      title: 'Equipment Sales', 
-      value: '89', 
-      change: '+8%', 
-      icon: Package, 
-      color: 'text-green-600 bg-green-100' 
+    {
+      title: 'Equipment Sales',
+      value: '89',
+      change: '+8%',
+      icon: Package,
+      color: 'text-green-600 bg-green-100'
     },
-    { 
-      title: 'Active Players', 
-      value: '234', 
-      change: '+15%', 
-      icon: Users, 
-      color: 'text-purple-600 bg-purple-100' 
+    {
+      title: 'Active Players',
+      value: totalPlayers,
+      change: '+15%',
+      icon: Users,
+      color: 'text-purple-600 bg-purple-100'
     },
-    { 
-      title: 'Revenue', 
-  value: 'Rs.45,280', 
-      change: '+23%', 
-      icon: DollarSign, 
-      color: 'text-orange-600 bg-orange-100' 
+    {
+      title: 'Revenue',
+      value: 'Rs.45,280',
+      change: '+23%',
+      icon: DollarSign,
+      color: 'text-orange-600 bg-orange-100'
     }
   ];
 
@@ -92,8 +101,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     <span>{data.bookings} bookings</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-green-600 h-2 rounded-full" 
+                    <div
+                      className="bg-green-600 h-2 rounded-full"
                       style={{ width: `${(data.bookings / 200) * 100}%` }}
                     ></div>
                   </div>
@@ -111,28 +120,28 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         <div className="bg-white rounded-xl p-6 shadow-lg">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="space-y-3">
-            <button 
+            <button
               onClick={() => onNavigate('bookings')}
               className="w-full flex items-center p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
             >
               <Calendar className="w-5 h-5 mr-3" />
               Manage Bookings
             </button>
-            <button 
+            <button
               onClick={() => onNavigate('equipment')}
               className="w-full flex items-center p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
             >
               <Package className="w-5 h-5 mr-3" />
               Manage Equipment
             </button>
-            <button 
+            <button
               onClick={() => onNavigate('players')}
               className="w-full flex items-center p-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
             >
               <Users className="w-5 h-5 mr-3" />
               Manage Players
             </button>
-            <button 
+            <button
               onClick={() => onNavigate('reports')}
               className="w-full flex items-center p-3 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors"
             >
@@ -185,11 +194,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     {booking.date} • {booking.time}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      booking.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
-                      booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${booking.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
+                        booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                      }`}>
                       {booking.status}
                     </span>
                   </td>

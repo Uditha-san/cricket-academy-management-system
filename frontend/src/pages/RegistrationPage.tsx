@@ -15,7 +15,13 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
     password: '',
     confirmPassword: '',
     role: 'player',
-    adminCode: ''
+    adminCode: '',
+    dateOfBirth: '',
+    preferredPosition: 'Batter',
+    battingStyle: 'Right-handed',
+    bowlingStyle: 'Right-arm Medium',
+    address: '',
+    emergencyContact: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -66,6 +72,18 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
     // Validate all fields
     const errors: { [key: string]: string } = {};
 
+    if (formData.role === 'player') {
+      if (!formData.dateOfBirth) {
+        errors.dateOfBirth = 'Date of birth is required';
+      }
+      if (!formData.address?.trim()) {
+        errors.address = 'Address is required';
+      }
+      if (!formData.emergencyContact?.trim()) {
+        errors.emergencyContact = 'Emergency contact is required';
+      }
+    }
+
     const nameError = validateName(formData.name);
     if (nameError) errors.name = nameError;
 
@@ -95,7 +113,7 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
 
     setIsLoading(true);
     try {
-      await register(formData.name, formData.email, formData.password, formData.phone, formData.role, formData.adminCode);
+      await register(formData.name, formData.email, formData.password, formData.phone, formData.role, formData.adminCode, formData.dateOfBirth, formData.preferredPosition, formData.battingStyle, formData.bowlingStyle, formData.address, formData.emergencyContact);
       // Navigate to verification page with email
       navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
     } catch (error: any) {
@@ -259,6 +277,120 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.phone}</p>
               )}
             </div>
+
+
+            {/* Player Details Section */}
+            {formData.role === 'player' && (
+              <>
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date of Birth <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="dateOfBirth"
+                    value={formData.dateOfBirth}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${fieldErrors.dateOfBirth ? 'border-red-500' : 'border-gray-300'}`}
+                    required={formData.role === 'player'}
+                  />
+                  {fieldErrors.dateOfBirth && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.dateOfBirth}</p>
+                  )}
+                </div>
+
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Address <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white ${fieldErrors.address ? 'border-red-500' : 'border-gray-300'}`}
+                    placeholder="Enter your address"
+                    required={formData.role === 'player'}
+                  />
+                  {fieldErrors.address && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.address}</p>
+                  )}
+                </div>
+
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Emergency Contact <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="emergencyContact"
+                    value={formData.emergencyContact}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white ${fieldErrors.emergencyContact ? 'border-red-500' : 'border-gray-300'}`}
+                    placeholder="Emergency Contact Number"
+                    required={formData.role === 'player'}
+                  />
+                  {fieldErrors.emergencyContact && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.emergencyContact}</p>
+                  )}
+                </div>
+
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Preferred Position <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="preferredPosition"
+                    value={formData.preferredPosition}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                  >
+                    <option value="Batter">Batter</option>
+                    <option value="Bowler">Bowler</option>
+                    <option value="All-rounder">All-rounder</option>
+                    <option value="Wicket-keeper">Wicket-keeper</option>
+                  </select>
+                </div>
+
+                {(formData.preferredPosition === 'Batter' || formData.preferredPosition === 'All-rounder' || formData.preferredPosition === 'Wicket-keeper') && (
+                  <div className="animate-in fade-in duration-300">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Batting Style <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="battingStyle"
+                      value={formData.battingStyle}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                    >
+                      <option value="Right-handed">Right-handed</option>
+                      <option value="Left-handed">Left-handed</option>
+                    </select>
+                  </div>
+                )}
+
+                {(formData.preferredPosition === 'Bowler' || formData.preferredPosition === 'All-rounder') && (
+                  <div className="animate-in fade-in duration-300">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Bowling Style <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="bowlingStyle"
+                      value={formData.bowlingStyle}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                    >
+                      <option value="Right-arm Medium">Right-arm Medium</option>
+                      <option value="Right-arm Fast">Right-arm Fast</option>
+                      <option value="Left-arm Medium">Left-arm Medium</option>
+                      <option value="Left-arm Fast">Left-arm Fast</option>
+                      <option value="Right-arm Spin">Right-arm Spin</option>
+                      <option value="Left-arm Spin">Left-arm Spin</option>
+                    </select>
+                  </div>
+                )}
+              </>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

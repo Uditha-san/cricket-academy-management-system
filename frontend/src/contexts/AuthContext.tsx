@@ -13,7 +13,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, phone: string, role: string, adminCode?: string) => Promise<void>;
+  register: (name: string, email: string, password: string, phone: string, role: string, adminCode?: string, dateOfBirth?: string, preferredPosition?: string, battingStyle?: string, bowlingStyle?: string, address?: string, emergencyContact?: string) => Promise<void>;
   logout: () => void;
   loginGuest: (name: string, email: string, phone: string) => Promise<void>;
 }
@@ -59,8 +59,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(user);
   };
 
-  const register = async (name: string, email: string, password: string, phone: string, role: string, adminCode?: string) => {
-    await api.post('/auth/register', { name, email, password, phone, role, adminCode });
+  const register = async (name: string, email: string, password: string, phone: string, role: string, adminCode?: string, dateOfBirth?: string, preferredPosition?: string, battingStyle?: string, bowlingStyle?: string, address?: string, emergencyContact?: string) => {
+    await api.post('/auth/register', { name, email, password, phone, role, adminCode, dateOfBirth, preferredPosition, battingStyle, bowlingStyle, address, emergencyContact });
     // Do not log in automatically. User must verify email.
   };
 

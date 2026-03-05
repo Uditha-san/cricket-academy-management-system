@@ -1,8 +1,8 @@
 import { Calendar, Wrench, ShoppingBag, TrendingUp, Trophy, Target } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
-import { useStats } from '../../contexts/StatsContext';
-
+import { useEffect, useState } from 'react';
+import api from '../../api/axios';
 
 interface PlayerDashboardProps {
   onNavigate: (page: string) => void;
@@ -11,26 +11,32 @@ interface PlayerDashboardProps {
 export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
   const { user } = useAuth();
   const { bookings, feedbacks } = useData();
-  const { getStats } = useStats();
+  const [performance, setPerformance] = useState<any>(null);
+
+  useEffect(() => {
+    if (user && user.id !== 'guest') {
+      api.get('/users/profile').then(res => {
+        setPerformance(res.data.performance);
+      }).catch(console.error);
+    }
+  }, [user]);
+
   const myBookings = bookings.filter(b => b.userId === user?.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const upcomingBookings = myBookings.filter(b => new Date(b.date) >= new Date()).slice(0, 2);
 
-  const stats = user ? getStats(user.id) : null;
   const latestFeedback = feedbacks.find(f => f.playerId === user?.id);
 
   const totalSessions = myBookings.length;
-  // Calculate a mock avg score if matches played > 0, else 0. 
-  // In a real app, this would come from a more detailed match history.
-  const avgScore = stats && stats.general.matchesPlayed > 0
-    ? Math.round(stats.batting.totalRuns / stats.general.matchesPlayed)
+  const avgScore = performance && performance.matchesPlayed > 0
+    ? Math.round(performance.totalRuns / performance.matchesPlayed)
     : 0;
 
   const playerStats = {
     totalSessions: totalSessions,
-    averageScore: avgScore,
-    highestScore: stats ? stats.batting.highestScore : 0,
-    totalWickets: stats ? stats.bowling.totalWickets : 0
+    averageScore: performance?.battingAverage || avgScore,
+    highestScore: performance ? performance.highestScore : 0,
+    totalWickets: performance ? performance.totalWickets : 0
   };
 
   const quickActions = [

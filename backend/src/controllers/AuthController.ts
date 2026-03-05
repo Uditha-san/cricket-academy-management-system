@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/data-source";
 import { User, UserRole, UserStatus } from "../entities/User";
+import { PlayerProfile } from "../entities/PlayerProfile";
+import { CoachProfile } from "../entities/CoachProfile";
+import { AdminProfile } from "../entities/AdminProfile";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validate } from "class-validator";
@@ -54,7 +57,7 @@ const getEmailTemplate = (title: string, content: string) => `
 
 export class AuthController {
     static async register(req: Request, res: Response): Promise<void> {
-        const { name, email, password, phone, role, adminCode } = req.body;
+        const { name, email, password, phone, role, adminCode, dateOfBirth, battingStyle, bowlingStyle, preferredPosition, address, emergencyContact } = req.body;
 
         try {
             // Input validation
@@ -111,6 +114,13 @@ export class AuthController {
                 validationErrors.push('Invalid role selected');
             }
 
+            // Validate player required fields
+            if (role === UserRole.PLAYER) {
+                if (!dateOfBirth) validationErrors.push('Date of birth is required for players');
+                if (!address) validationErrors.push('Address is required for players');
+                if (!emergencyContact) validationErrors.push('Emergency contact is required for players');
+            }
+
             // Return validation errors if any
             if (validationErrors.length > 0) {
                 res.status(400).json({
@@ -152,6 +162,20 @@ export class AuthController {
             user.status = UserStatus.ACTIVE;
             user.verificationToken = verificationToken;
             user.isVerified = false; // Not verified yet
+
+            if (user.role === UserRole.PLAYER) {
+                user.playerProfile = new PlayerProfile();
+                if (dateOfBirth) user.playerProfile.dateOfBirth = dateOfBirth;
+                if (battingStyle) user.playerProfile.battingStyle = battingStyle;
+                if (bowlingStyle) user.playerProfile.bowlingStyle = bowlingStyle;
+                if (preferredPosition) user.playerProfile.preferredPosition = preferredPosition;
+                if (address) user.playerProfile.address = address;
+                if (emergencyContact) user.playerProfile.emergencyContact = emergencyContact;
+            } else if (user.role === UserRole.COACH) {
+                user.coachProfile = new CoachProfile();
+            } else if (user.role === UserRole.ADMIN) {
+                user.adminProfile = new AdminProfile();
+            }
 
             const errors = await validate(user);
             if (errors.length > 0) {

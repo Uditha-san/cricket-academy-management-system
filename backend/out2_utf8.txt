@@ -1,0 +1,24 @@
+﻿[dotenv@17.2.3] injecting env (11) from .env -- tip: ≡ƒ¢á∩╕Å  run anywhere with `dotenvx run -- yourcommand`
+Simulating API GET /users/profile for user: test_player_1772680440046@test.com 4a498d6b-9023-47e7-abfa-b511dd826d86
+Response JSON: {
+  "id": "4a498d6b-9023-47e7-abfa-b511dd826d86",
+  "name": "Test Register Player",
+  "email": "test_player_1772680440046@test.com",
+  "phone": "+94771122334",
+  "role": "player",
+  "joinDate": "2026-03-05T03:14:00.249Z",
+  "performance": null,
+  "playerProfile": {
+    "id": "8f8addac-830b-4fb4-94ea-d719d91b5485",
+    "dateOfBirth": "2002-05-10",
+    "battingStyle": "Left-handed",
+    "bowlingStyle": "Left-arm Spin",
+    "preferredPosition": "All-rounder",
+    "totalBookings": 0,
+    "totalSpent": "0.00",
+    "address": "Test Address",
+    "emergencyContact": "+94770000000"
+  },
+  "coachProfile": null,
+  "adminProfile": null
+}
