@@ -88,6 +88,13 @@ export class BookingController {
                 return;
             }
 
+            // Validate bookingDate
+            const parsedDate = new Date(bookingDate);
+            if (!bookingDate || isNaN(parsedDate.getTime())) {
+                res.status(400).json({ message: "Invalid booking date. Please select a valid date (YYYY-MM-DD)." });
+                return;
+            }
+
             const facility = await facilityRepository.findOneBy({ id: facilityId });
             if (!facility) {
                 res.status(404).json({ message: "Facility not found" });
@@ -122,6 +129,7 @@ export class BookingController {
                     bookingId: newBooking.id,
                     playerName: user.name,
                     playerEmail: user.email,
+                    userRole: user.role,
                     courtName: facility.name,
                     date: bookingDate,
                     startTime,
@@ -185,6 +193,7 @@ export class BookingController {
                         bookingId: booking.id,
                         playerName: booking.user.name,
                         playerEmail: booking.user.email,
+                        userRole: booking.user.role,
                         courtName: booking.facility.name,
                         date: new Date(booking.bookingDate).toISOString().split('T')[0],
                         startTime: booking.startTime,

@@ -428,4 +428,56 @@ export class AuthController {
             res.status(500).json({ message: "Internal server error" });
         }
     }
+
+    static async guestLogin(req: Request, res: Response): Promise<void> {
+        const { name, email, phone } = req.body;
+
+        if (!name || !email || !phone) {
+            res.status(400).json({ message: "Name, email, and phone are required." });
+            return;
+        }
+
+        try {
+            let user = await userRepository.findOne({ where: { email } });
+
+            if (user && user.role !== UserRole.GUEST) {
+                // Registered player/coach/admin should use regular login
+                res.status(409).json({ message: "An account with this email already exists. Please log in instead." });
+                return;
+            }
+
+            if (!user) {
+                // Create a new guest user
+                user = new User();
+                user.name = name.trim();
+                user.email = email.toLowerCase().trim();
+                user.phone = phone.trim();
+                user.role = UserRole.GUEST;
+                user.status = UserStatus.ACTIVE;
+                user.isVerified = true; // Guests skip email verification
+                user.password = await bcrypt.hash(uuidv4(), 10); // Random un-guessable password
+                user.verificationToken = "";
+                await userRepository.save(user);
+            } else {
+                // Update existing guest's name/phone in case they changed
+                user.name = name.trim();
+                user.phone = phone.trim();
+                await userRepository.save(user);
+            }
+
+            const token = jwt.sign(
+                { userId: user.id, email: user.email, role: user.role },
+                process.env.JWT_SECRET || "scc_academy_secure_jwt_secret",
+                { expiresIn: "8h" }
+            );
+
+            res.json({
+                token,
+                user: { id: user.id, name: user.name, email: user.email, role: user.role }
+            });
+        } catch (error) {
+            console.error("Guest login error:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
 }

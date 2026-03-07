@@ -49,6 +49,7 @@ export interface BookingEmailData {
     bookingId: string;
     playerName: string;
     playerEmail: string;
+    userRole?: string; // 'guest' or 'player'
     courtName: string;
     date: string;
     startTime: string;
@@ -65,6 +66,7 @@ const buildBookingDetailsHtml = (data: BookingEmailData) => `
     <div class="info-box">
         <table style="width: 100%; border-collapse: collapse;">
             <tr><td class="label" style="padding: 4px 0; border-bottom: 1px solid #e0e0e0;">Player</td><td style="padding: 4px 0; border-bottom: 1px solid #e0e0e0;">${data.playerName}</td></tr>
+            <tr><td class="label" style="padding: 4px 0; border-bottom: 1px solid #e0e0e0;">Player Type</td><td style="padding: 4px 0; border-bottom: 1px solid #e0e0e0;"><span style="display:inline-block;padding:2px 10px;background:${data.userRole === 'guest' ? '#f97316' : '#16a34a'};color:white;border-radius:12px;font-size:12px;font-weight:bold;">${data.userRole === 'guest' ? 'Guest' : 'Academy Player'}</span></td></tr>
             <tr><td class="label" style="padding: 4px 0; border-bottom: 1px solid #e0e0e0;">Court</td><td style="padding: 4px 0; border-bottom: 1px solid #e0e0e0;">${data.courtName}</td></tr>
             <tr><td class="label" style="padding: 4px 0; border-bottom: 1px solid #e0e0e0;">Date</td><td style="padding: 4px 0; border-bottom: 1px solid #e0e0e0;">${formatDate(data.date)}</td></tr>
             <tr><td class="label" style="padding: 4px 0; border-bottom: 1px solid #e0e0e0;">Start Time</td><td style="padding: 4px 0; border-bottom: 1px solid #e0e0e0;">${data.startTime}</td></tr>

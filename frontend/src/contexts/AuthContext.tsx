@@ -71,18 +71,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const loginGuest = async (name: string, email: string, phone: string) => {
-    // Guest login might strictly be frontend-only or have a separate endpoint
-    // For now, keeping it simple as before or could add a guest endpoint
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const guestUser: User = {
-      id: 'guest',
-      name,
-      email,
-      phone,
-      role: 'guest'
-    };
-    setUser(guestUser);
-    // Optionally store guest session?
+    const response = await api.post('/auth/guest-login', { name, email, phone });
+    const { token, user } = response.data;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    setUser(user);
   };
 
   return (

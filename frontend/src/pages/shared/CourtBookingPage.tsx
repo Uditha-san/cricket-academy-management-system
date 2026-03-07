@@ -11,7 +11,7 @@ interface CourtBookingPageProps {
 export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) {
   const { user } = useAuth();
   const { refreshBookings } = useData();
-  const [selectedDate, setSelectedDate] = useState('2025-01-22');
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [selectedCourt, setSelectedCourt] = useState('');
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [bookingType, setBookingType] = useState<'friends' | 'practice'>('friends');
@@ -118,6 +118,18 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
       return;
     }
 
+    // Validate the date format is strictly YYYY-MM-DD
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(selectedDate)) {
+      alert("Invalid date selected. Please pick a valid date from the calendar.");
+      return;
+    }
+    const parsedDate = new Date(selectedDate);
+    if (isNaN(parsedDate.getTime())) {
+      alert("Invalid date. Please select a valid future date.");
+      return;
+    }
+
     const coachFee = bookingType === 'practice' ? 1000 : 0;
     const amountPerSlot = Math.round((selectedCourtData.price + coachFee) * 1.18);
 
@@ -127,19 +139,18 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
         const payload = {
           facilityId: selectedCourtData.id,
           bookingDate: selectedDate,
-          startTime: slotData.time.split(' - ')[0], // Sending just the start time (e.g., '6:00 AM')
-          duration: 1, // Assume each slot is 1 hour based on timeSlots array format
+          startTime: slotData.time.split(' - ')[0], // e.g., '6:00 AM'
+          duration: 1,
           amount: amountPerSlot,
           coachId: bookingType === 'practice' ? selectedCoach : undefined
         };
-
         return api.post('/bookings', payload);
       });
 
       await Promise.all(bookingPromises);
 
-      // Refresh data so the dashboard reflects the new booking(s)
-      await refreshBookings();
+      // Refresh data in background — don't block success on failure here
+      refreshBookings().catch(console.warn);
 
       setShowConfirmation(true);
       setTimeout(() => {
@@ -147,9 +158,10 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
         onNavigate('dashboard');
       }, 2000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Booking generation failed:", error);
-      alert("There was an error saving your booking. Please try again.");
+      const msg = error?.response?.data?.message || error?.message || "Unknown error";
+      alert(`Booking failed: ${msg}`);
     }
   };
 
@@ -203,11 +215,18 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
                 <input type="radio" className="hidden" checked={bookingType === 'friends'} onChange={() => { setBookingType('friends'); setSelectedCoach(''); }} />
                 <span className={`font-medium ${bookingType === 'friends' ? 'text-green-700' : 'text-gray-900'}`}>Play with Friends</span>
               </label>
-              <label className={`flex-1 flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${bookingType === 'practice' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                <input type="radio" className="hidden" checked={bookingType === 'practice'} onChange={() => setBookingType('practice')} />
-                <span className={`font-medium ${bookingType === 'practice' ? 'text-green-700' : 'text-gray-900'}`}>Practice with a Coach</span>
-              </label>
+              {user?.role !== 'guest' && (
+                <label className={`flex-1 flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${bookingType === 'practice' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                  <input type="radio" className="hidden" checked={bookingType === 'practice'} onChange={() => setBookingType('practice')} />
+                  <span className={`font-medium ${bookingType === 'practice' ? 'text-green-700' : 'text-gray-900'}`}>Practice with a Coach</span>
+                </label>
+              )}
             </div>
+            {user?.role === 'guest' && (
+              <p className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-lg p-3">
+                👤 You are booking as a <strong>Guest</strong>. Coach practice sessions are available for academy members only.
+              </p>
+            )}
           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-lg mb-8">
@@ -215,7 +234,14 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
             <input
               type="date"
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                // Only accept strict YYYY-MM-DD format
+                if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                  setSelectedDate(val);
+                  setSelectedSlots([]); // Clear slots when date changes
+                }
+              }}
               min={new Date().toISOString().split('T')[0]}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
@@ -277,10 +303,10 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
                         onClick={() => isAvailable && handleSlotToggle(slot.id)}
                         disabled={!isAvailable}
                         className={`p-3 rounded-lg border text-sm font-medium transition-colors ${selectedSlots.includes(slot.id)
-                            ? 'border-green-500 bg-green-500 text-white'
-                            : isAvailable
-                              ? 'border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50'
-                              : 'border-gray-100 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                          ? 'border-green-500 bg-green-500 text-white'
+                          : isAvailable
+                            ? 'border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50'
+                            : 'border-gray-100 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
                           }`}
                       >
                         <Clock className={`w-4 h-4 mx-auto mb-1 ${!isAvailable ? 'text-gray-400' : ''}`} />

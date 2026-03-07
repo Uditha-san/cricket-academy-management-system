@@ -128,6 +128,7 @@ export default function ManageBookingsPage({ onNavigate }: ManageBookingsPagePro
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Court & Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -136,13 +137,18 @@ export default function ManageBookingsPage({ onNavigate }: ManageBookingsPagePro
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredBookings.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No bookings found.</td></tr>
+                  <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">No bookings found.</td></tr>
                 ) : filteredBookings.map(booking => (
                   <tr key={booking.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">...{booking.id.slice(-6)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <p className="text-sm font-medium text-gray-900">{booking.userName}</p>
                       <p className="text-sm text-gray-500">{booking.userEmail}</p>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${booking.userRole === 'guest' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>
+                        {booking.userRole === 'guest' ? '👤 Guest' : '🏏 Academy Player'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <p className="text-sm font-medium text-gray-900">{booking.courtName}</p>

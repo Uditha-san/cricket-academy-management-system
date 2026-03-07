@@ -1,8 +1,17 @@
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Users, Calendar, BarChart3, ShoppingBag, Target, Award, Clock, MapPin, Phone, Mail, ArrowRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Trophy, Users, Calendar, BarChart3, ShoppingBag, Target, Award, Clock, MapPin, Phone, Mail, ArrowRight, Star, UserCheck } from 'lucide-react';
 
 export default function LandingPage() {
     const navigate = useNavigate();
+    const [reviews, setReviews] = useState<{ guestName: string; rating: number; comment: string }[]>([]);
+
+    useEffect(() => {
+        fetch('http://localhost:3000/api/guest-reviews')
+            .then(r => r.json())
+            .then(data => setReviews(Array.isArray(data) ? data.slice(0, 6) : []))
+            .catch(() => { });
+    }, []);
 
     const features = [
         {
@@ -239,6 +248,13 @@ export default function LandingPage() {
                                 >
                                     Sign In
                                 </button>
+                                <button
+                                    onClick={() => navigate('/login?guest=1')}
+                                    className="px-8 py-4 bg-white/80 text-gray-700 border-2 border-gray-300 rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-md hover:shadow-lg transform hover:scale-105 flex items-center gap-2"
+                                >
+                                    <UserCheck className="w-5 h-5 text-orange-500" />
+                                    Continue as Guest
+                                </button>
                             </div>
                             {/* Quick Stats */}
                             <div className="grid grid-cols-3 gap-6 pt-8 initial-hidden animate-fade-in-up delay-400">
@@ -356,6 +372,31 @@ export default function LandingPage() {
                 </div>
             </section>
 
+            {/* Guest Reviews Section */}
+            {reviews.length > 0 && (
+                <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-12 initial-hidden animate-fade-in-up">
+                            <h2 className="text-4xl font-bold text-gray-900 mb-4">What Our Guests Say</h2>
+                            <p className="text-xl text-gray-600 max-w-2xl mx-auto">Real reviews from visitors who experienced our facilities</p>
+                        </div>
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {reviews.map((r, i) => (
+                                <div key={i} className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-all border border-gray-100">
+                                    <div className="flex gap-1 mb-3">
+                                        {[...Array(5)].map((_, j) => (
+                                            <Star key={j} className={`w-4 h-4 ${j < r.rating ? 'text-yellow-400 fill-current' : 'text-gray-200'}`} />
+                                        ))}
+                                    </div>
+                                    <p className="text-gray-700 text-sm italic mb-4">"{r.comment}"</p>
+                                    <p className="text-gray-500 text-xs font-medium">— {r.guestName}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
+
             {/* Call to Action Section */}
             <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
                 <div className="max-w-4xl mx-auto text-center">
@@ -373,6 +414,13 @@ export default function LandingPage() {
                         >
                             <span>Create Free Account</span>
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+                        </button>
+                        <button
+                            onClick={() => navigate('/login?guest=1')}
+                            className="px-10 py-5 bg-white text-gray-700 border-2 border-gray-300 rounded-xl font-semibold text-lg hover:bg-gray-50 transition-all shadow-md hover:shadow-lg transform hover:scale-105 flex items-center gap-2"
+                        >
+                            <UserCheck className="w-5 h-5 text-orange-500" />
+                            Continue as Guest
                         </button>
                     </div>
                 </div>

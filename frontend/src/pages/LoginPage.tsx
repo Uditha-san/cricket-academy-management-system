@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, Eye, EyeOff, Phone, Mail, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +22,14 @@ export default function LoginPage({ onSwitchToRegistration }: LoginPageProps) {
   const { login, loginGuest } = useAuth();
   const navigate = useNavigate();
 
+  // Auto-open guest modal if redirected from landing page with ?guest=1
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('guest') === '1') {
+      setShowGuestModal(true);
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -38,12 +46,18 @@ export default function LoginPage({ onSwitchToRegistration }: LoginPageProps) {
 
   const handleGuestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!guestInfo.name.trim() || !guestInfo.email.trim() || !guestInfo.phone.trim()) {
+      setError('Please fill in all guest fields.');
+      return;
+    }
     setIsLoading(true);
+    setError('');
     try {
-      await loginGuest(guestInfo.name, guestInfo.email, guestInfo.phone);
+      await loginGuest(guestInfo.name.trim(), guestInfo.email.trim(), guestInfo.phone.trim());
       setShowGuestModal(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Guest login failed:', error);
+      setError(error?.response?.data?.message || 'Guest login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }

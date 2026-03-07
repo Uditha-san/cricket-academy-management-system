@@ -39,6 +39,7 @@ export interface Booking {
     userId: string;
     userName: string;
     userEmail: string;
+    userRole: string;
     courtId: string;
     courtName: string;
     date: string;
@@ -145,6 +146,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                         userId: b.user?.id || userProfile.id,
                         userName: b.user ? b.user.name : userProfile.name,
                         userEmail: b.user ? b.user.email : userProfile.email,
+                        userRole: b.user ? b.user.role : userProfile.role,
                         courtId: b.facility?.id || 'unknown',
                         courtName: b.facility?.name || 'Unknown Court',
                         date: new Date(b.bookingDate).toISOString().split('T')[0],
@@ -183,6 +185,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                     userId: b.user?.id || userProfile.id,
                     userName: b.user ? b.user.name : userProfile.name,
                     userEmail: b.user ? b.user.email : userProfile.email,
+                    userRole: b.user ? b.user.role : userProfile.role,
                     courtId: b.facility?.id || 'unknown',
                     courtName: b.facility?.name || 'Unknown Court',
                     date: new Date(b.bookingDate).toISOString().split('T')[0],
