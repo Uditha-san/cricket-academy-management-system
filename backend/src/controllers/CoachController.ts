@@ -3,6 +3,8 @@ import { AppDataSource } from "../config/data-source";
 import { User, UserRole } from "../entities/User";
 import { Feedback } from "../entities/Feedback";
 import { Message } from "../entities/Message";
+import { Booking } from "../entities/Booking";
+import { Rental } from "../entities/Rental";
 
 export class CoachController {
     // 1. Get all players for coach to select and view
@@ -129,6 +131,71 @@ export class CoachController {
             res.json(result);
         } catch (error) {
             console.error("Get messages error:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+
+    // 5. Get bookings assigned to this coach
+    static async getAssignedBookings(req: Request, res: Response): Promise<void> {
+        // @ts-ignore
+        const coachId = req.user?.userId;
+
+        try {
+            const bookingRepository = AppDataSource.getRepository(Booking);
+
+            const bookings = await bookingRepository.find({
+                where: { coach: { id: coachId } },
+                relations: ["user", "facility", "coach"],
+                order: { bookingDate: "ASC", startTime: "ASC" }
+            });
+
+            const result = bookings.map(b => ({
+                id: b.id,
+                playerName: b.user.name,
+                playerId: b.user.id,
+                courtName: b.facility.name,
+                date: new Date(b.bookingDate).toISOString().split('T')[0],
+                startTime: b.startTime,
+                duration: b.duration,
+                status: b.status,
+                amount: parseFloat(b.amount as any)
+            }));
+
+            res.json(result);
+        } catch (error) {
+            console.error("Get assigned bookings error:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+
+    // 6. Get machine rentals assigned to this coach
+    static async getAssignedRentals(req: Request, res: Response): Promise<void> {
+        // @ts-ignore
+        const coachId = req.user?.userId;
+
+        try {
+            const rentalRepository = AppDataSource.getRepository(Rental);
+
+            const rentals = await rentalRepository.find({
+                where: { coach: { id: coachId } },
+                relations: ["user", "facility", "coach"],
+                order: { rentalDate: "ASC", startTime: "ASC" }
+            });
+
+            const result = rentals.map(r => ({
+                id: r.id,
+                playerName: r.user.name,
+                machineName: r.facility.name,
+                date: new Date(r.rentalDate).toISOString().split('T')[0],
+                startTime: r.startTime,
+                duration: r.duration,
+                status: r.status,
+                amount: parseFloat(r.amount as any)
+            }));
+
+            res.json(result);
+        } catch (error) {
+            console.error("Get assigned rentals error:", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }

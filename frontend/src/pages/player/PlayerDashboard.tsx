@@ -1,4 +1,4 @@
-import { Calendar, ShoppingBag, TrendingUp, Trophy, Target, User as UserIcon } from 'lucide-react';
+import { Calendar, ShoppingBag, TrendingUp, Trophy, Target, User as UserIcon, Wrench } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useEffect, useState } from 'react';
@@ -14,6 +14,7 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
   const [performance, setPerformance] = useState<any>(null);
   const [showBookingsModal, setShowBookingsModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [rentals, setRentals] = useState<any[]>([]);
 
   useEffect(() => {
     if (user && user.id !== 'guest') {
@@ -22,23 +23,41 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
       }).catch(console.error);
 
       refreshBookings().catch(console.error);
+
+      api.get('/rentals/my').then(res => setRentals(res.data)).catch(console.error);
     }
   }, [user]);
 
   const myBookings = bookings.filter(b => b.userId === user?.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const upcomingBookings = myBookings.filter(b => b.date >= todayStr).slice(0, 5); // Let's show up to 5
+
+  // Merge ALL court bookings + rentals, sorted by date descending (most recent first)
+  const allRentalsFormatted = rentals.map((r: any) => ({
+    ...r,
+    _type: 'rental',
+    _sortDate: new Date(r.rentalDate).toISOString().split('T')[0]
+  }));
+
+  const allBookingsFormatted = myBookings.map(b => ({
+    ...b,
+    _type: 'booking',
+    _sortDate: b.date
+  }));
+
+  const allSessions = [
+    ...allBookingsFormatted,
+    ...allRentalsFormatted
+  ].sort((a, b) => b._sortDate.localeCompare(a._sortDate)).slice(0, 6);
 
   const latestFeedback = feedbacks.find(f => f.playerId === user?.id);
 
-  const totalSessions = myBookings.length;
   const avgScore = performance && performance.matchesPlayed > 0
     ? Math.round(performance.totalRuns / performance.matchesPlayed)
     : 0;
 
   const playerStats = {
-    totalSessions: totalSessions,
+    totalSessions: myBookings.length + rentals.length,
     averageScore: performance?.battingAverage || avgScore,
     highestScore: performance ? performance.highestScore : 0,
     totalWickets: performance ? performance.totalWickets : 0
@@ -149,38 +168,63 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
         })}
       </div>
 
-      {/* Upcoming Bookings */}
+      {/* My Sessions - combined court bookings + machine rentals */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-xl p-6 shadow-lg">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Upcoming Bookings</h2>
-          {upcomingBookings.length > 0 ? (
-            <div className="space-y-4">
-              {upcomingBookings.map((booking, index) => (
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">My Sessions</h2>
+            <span className="text-xs text-gray-400">Most recent first</span>
+          </div>
+          {allSessions.length > 0 ? (
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {allSessions.map((item: any, index) => (
                 <div
                   key={index}
-                  onClick={() => setSelectedBooking(booking)}
-                  className="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => item._type === 'booking' ? setSelectedBooking(item) : undefined}
+                  className={`flex items-center p-3 bg-gray-50 rounded-lg ${item._type === 'booking' ? 'cursor-pointer hover:bg-gray-100' : ''} transition-colors`}
                 >
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                    <Calendar className="w-6 h-6 text-green-600" />
+                  <div className={`w-11 h-11 rounded-lg flex items-center justify-center mr-3 shrink-0 ${item._type === 'booking' ? 'bg-green-100' : 'bg-purple-100'
+                    }`}>
+                    {item._type === 'booking'
+                      ? <Calendar className="w-5 h-5 text-green-600" />
+                      : <Wrench className="w-5 h-5 text-purple-600" />
+                    }
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{booking.courtName}</p>
-                    <p className="text-sm text-gray-600">{booking.date} • {booking.timeSlot}</p>
-                    <p className="text-xs text-gray-500">{booking.status}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">
+                      {item._type === 'booking' ? item.courtName : item.facility?.name}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {item._type === 'booking'
+                        ? `${item.date} • ${item.timeSlot}`
+                        : `${new Date(item.rentalDate).toISOString().split('T')[0]} • ${item.startTime} (${item.duration}h)`
+                      }
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {item._type === 'booking' ? '🏏 Court' : '⚙️ Machine'}
+                      {item._sortDate >= todayStr ? ' • Upcoming' : ''}
+                    </p>
                   </div>
+                  <span className={`ml-2 shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${(item.status === 'Confirmed' || item.status === 'confirmed') ? 'bg-green-100 text-green-800' :
+                    (item.status === 'Pending' || item.status === 'pending') ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                    {item.status?.charAt(0).toUpperCase() + item.status?.slice(1)}
+                  </span>
                 </div>
               ))}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
               <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No upcoming bookings</p>
+              <p>No sessions yet</p>
+              <button onClick={() => onNavigate('booking')} className="mt-2 text-sm text-green-600 hover:underline font-medium">
+                Book a session →
+              </button>
             </div>
           )}
         </div>
 
-        {/* Latest Coach Feedback (Preview) */}
         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
           <h2 className="text-xl font-semibold mb-4">Coach's Latest Feedback</h2>
           {latestFeedback ? (

@@ -20,4 +20,10 @@ router.get("/feedback-history", authMiddleware, coachMiddleware, CoachController
 // Get messages received from players
 router.get("/messages", authMiddleware, coachMiddleware, CoachController.getMessagesFromPlayers);
 
+// Get coach assigned bookings
+router.get("/bookings", authMiddleware, coachMiddleware, CoachController.getAssignedBookings);
+
+// Get coach assigned machine rentals
+router.get("/rentals", authMiddleware, coachMiddleware, CoachController.getAssignedRentals);
+
 export default router;

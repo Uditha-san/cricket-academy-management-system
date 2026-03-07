@@ -1,6 +1,7 @@
 import { Calendar, Package, Users, DollarSign, BarChart3 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { adminApi } from '../../api/admin';
+import { useData } from '../../contexts/DataContext';
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -8,24 +9,31 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [totalPlayers, setTotalPlayers] = useState<number | string>('Loading...');
+  const { bookings } = useData();
 
   useEffect(() => {
     adminApi.getPlayers().then(players => {
       setTotalPlayers(players.length);
     }).catch(console.error);
   }, []);
+  const totalRevenue = useMemo(() => {
+    return bookings
+      .filter(b => b.status !== 'Cancelled')
+      .reduce((sum, b) => sum + b.amount, 0);
+  }, [bookings]);
+
   const stats = [
     {
       title: 'Total Bookings',
-      value: '156',
-      change: '+12%',
+      value: bookings.length.toString(),
+      change: '+10%', // Currently static as we don't have previous month tracking
       icon: Calendar,
       color: 'text-blue-600 bg-blue-100'
     },
     {
       title: 'Equipment Sales',
-      value: '89',
-      change: '+8%',
+      value: '0', // Will be built when rentals are implemented
+      change: '0%',
       icon: Package,
       color: 'text-green-600 bg-green-100'
     },
@@ -38,25 +46,49 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     },
     {
       title: 'Revenue',
-      value: 'Rs.45,280',
-      change: '+23%',
+      value: `Rs.${totalRevenue.toLocaleString()}`,
+      change: '+20%',
       icon: DollarSign,
       color: 'text-orange-600 bg-orange-100'
     }
   ];
 
-  const recentBookings = [
-    { id: 'B001', player: 'Rahul Sharma', court: 'Court 1', time: '10:00 AM', date: '2025-01-22', status: 'Confirmed' },
-    { id: 'B002', player: 'Priya Patel', court: 'Court 2', time: '2:00 PM', date: '2025-01-22', status: 'Pending' },
-    { id: 'B003', player: 'Michael Johnson', court: 'Court 3', time: '4:00 PM', date: '2025-01-22', status: 'Confirmed' },
-    { id: 'B004', player: 'Sarah Williams', court: 'Court 1', time: '6:00 PM', date: '2025-01-22', status: 'Cancelled' }
-  ];
+  const recentBookings = useMemo(() => {
+    // Sort logic already defaults to DESC from backend, but ensuring latest 5 elements
+    return bookings.slice(0, 5);
+  }, [bookings]);
 
-  const monthlyData = [
-    { month: 'Jan', bookings: 120, revenue: 38000 },
-    { month: 'Feb', bookings: 135, revenue: 42000 },
-    { month: 'Mar', bookings: 156, revenue: 45280 }
-  ];
+  const monthlyData = useMemo(() => {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const currentMonth = new Date().getMonth();
+    const data = [];
+
+    // Generates last 3 months
+    for (let i = 2; i >= 0; i--) {
+      let m = currentMonth - i;
+      let y = new Date().getFullYear();
+      if (m < 0) {
+        m += 12;
+        y--;
+      }
+
+      const monthBookings = bookings.filter(b => {
+        const d = new Date(b.bookingDate);
+        return d.getMonth() === m && d.getFullYear() === y;
+      });
+
+      const monthRev = monthBookings
+        .filter(b => b.status !== 'Cancelled')
+        .reduce((sum, b) => sum + b.amount, 0);
+
+      data.push({
+        month: monthNames[m],
+        bookings: monthBookings.length,
+        revenue: monthRev
+      });
+    }
+    return data;
+  }, [bookings]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -179,24 +211,30 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {recentBookings.map((booking) => (
+              {recentBookings.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    No recent bookings available.
+                  </td>
+                </tr>
+              ) : recentBookings.map((booking) => (
                 <tr key={booking.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {booking.id}
+                    ...{booking.id.slice(-6)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {booking.player}
+                    {booking.userName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {booking.court}
+                    {booking.courtName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {booking.date} • {booking.time}
+                    {booking.date} • {booking.timeSlot}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${booking.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
-                        booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
+                      booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
                       }`}>
                       {booking.status}
                     </span>

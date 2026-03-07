@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Calendar, TrendingUp, MessageSquare, Edit } from 'lucide-react';
+import { Users, Calendar, TrendingUp, MessageSquare, Edit, Wrench } from 'lucide-react';
 import { useStats, PlayerStats } from '../../contexts/StatsContext';
 import api from '../../api/axios';
 import PlayerStatsModal from '../../components/stats/PlayerStatsModal';
@@ -15,6 +15,8 @@ export default function CoachDashboard() {
 
   const [sentFeedbacks, setSentFeedbacks] = useState<any[]>([]);
   const [receivedMessages, setReceivedMessages] = useState<any[]>([]);
+  const [assignedBookings, setAssignedBookings] = useState<any[]>([]);
+  const [assignedRentals, setAssignedRentals] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'messages'>('overview');
 
   // Stats Modal State
@@ -25,40 +27,27 @@ export default function CoachDashboard() {
     Promise.all([
       api.get('/coach/players'),
       api.get('/coach/feedback-history'),
-      api.get('/coach/messages')
-    ]).then(([playersRes, fbRes, msgRes]) => {
+      api.get('/coach/messages'),
+      api.get('/coach/bookings'),
+      api.get('/coach/rentals')
+    ]).then(([playersRes, fbRes, msgRes, bkRes, rnRes]) => {
       setPlayers(playersRes.data);
       setSentFeedbacks(fbRes.data);
       setReceivedMessages(msgRes.data);
+      setAssignedBookings(bkRes.data);
+      setAssignedRentals(rnRes.data);
     }).catch(console.error);
   }, []);
 
-  const upcomingSessions = [
-    {
-      id: 1,
-      title: 'Batting Practice',
-      time: '09:00 AM - 11:00 AM',
-      date: 'Today',
-      attendees: 12,
-      location: 'Main Ground'
-    },
-    {
-      id: 2,
-      title: 'Fitness Assessment',
-      time: '04:00 PM - 06:00 PM',
-      date: 'Today',
-      attendees: 15,
-      location: 'Gym'
-    },
-    {
-      id: 3,
-      title: 'Fielding Drills',
-      time: '07:00 AM - 09:00 AM',
-      date: 'Tomorrow',
-      attendees: 18,
-      location: 'Practice Nets'
+  const handleUpdateStatus = async (id: string, status: string) => {
+    try {
+      await api.put(`/bookings/${id}/status`, { status });
+      setAssignedBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+    } catch (error) {
+      console.error("Failed to change booking status:", error);
+      alert("Error trying to change status.");
     }
-  ];
+  };
 
   const handleSendFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,8 +108,8 @@ export default function CoachDashboard() {
         <div className="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Today's Sessions</p>
-              <p className="text-2xl font-bold text-gray-900">2</p>
+              <p className="text-sm font-medium text-gray-600">Assigned Sessions</p>
+              <p className="text-2xl font-bold text-gray-900">{assignedBookings.filter((b: any) => b.status !== 'cancelled' && b.status !== 'Cancelled').length}</p>
             </div>
             <Calendar className="w-8 h-8 text-green-500" />
           </div>
@@ -354,27 +343,98 @@ export default function CoachDashboard() {
           {/* Upcoming Sessions */}
           <div className="bg-white rounded-xl p-6 shadow-lg">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Upcoming Sessions</h2>
-            <div className="space-y-4">
-              {upcomingSessions.map((session) => (
-                <div key={session.id} className="flex items-center p-4 border border-gray-200 rounded-lg">
-                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 font-bold mb-3 md:mb-0 md:mr-4">
-                    {session.date === 'Today' ? 'TD' : 'TM'}
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+              {assignedBookings.length > 0 ? assignedBookings.map((session) => (
+                <div key={session.id} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center font-bold mb-3 md:mb-0 md:mr-4 ${session.status === 'Confirmed' ? 'bg-green-100 text-green-600' :
+                    session.status === 'Pending' ? 'bg-yellow-100 text-yellow-600' :
+                      'bg-red-100 text-red-600'
+                    }`}>
+                    {session.status.charAt(0)}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{session.title}</h3>
-                    <p className="text-sm text-gray-500">{session.time}</p>
+                    <h3 className="font-semibold text-gray-900">{session.playerName}</h3>
+                    <p className="text-sm text-gray-500">{session.date} • {session.startTime} ({session.duration}h)</p>
                     <div className="flex items-center mt-1 text-xs text-gray-500">
-                      <Users className="w-3 h-3 mr-1" />
-                      {session.attendees} Attending
+                      <span className={`font-semibold ${session.status === 'Confirmed' ? 'text-green-600' :
+                        session.status === 'Pending' ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                        {session.status}
+                      </span>
                       <span className="mx-2">•</span>
-                      <span>{session.location}</span>
+                      <span>{session.courtName}</span>
                     </div>
                   </div>
-                  <button className="px-3 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded">
-                    Details
-                  </button>
+                  <div className="flex flex-col space-y-2 ml-4">
+                    {session.status === 'Pending' && (
+                      <button
+                        onClick={() => handleUpdateStatus(session.id, 'Confirmed')}
+                        className="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
+                      >
+                        Approve
+                      </button>
+                    )}
+                    {(session.status === 'Pending' || session.status === 'Confirmed') && (
+                      <button
+                        onClick={() => handleUpdateStatus(session.id, 'Cancelled')}
+                        className="px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-sm text-gray-500 py-4 text-center">No assigned bookings yet.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Assigned Machine Rentals */}
+          <div className="bg-white rounded-xl p-6 shadow-lg">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-purple-500" /> Assigned Machine Rentals
+            </h2>
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+              {assignedRentals.length > 0 ? assignedRentals.map(r => (
+                <div key={r.id} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center font-bold mr-4 ${r.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                      r.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                    }`}>
+                    <Wrench className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">{r.playerName}</h3>
+                    <p className="text-sm text-gray-500">{r.machineName} • {r.date} at {r.startTime} ({r.duration}h)</p>
+                    <span className={`text-xs font-semibold ${r.status === 'confirmed' ? 'text-green-600' :
+                        r.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                      {r.status?.charAt(0).toUpperCase() + r.status?.slice(1)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col space-y-2 ml-4">
+                    {r.status === 'pending' && (
+                      <button
+                        onClick={() => handleUpdateStatus(r.id, 'confirmed')}
+                        className="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
+                      >
+                        Approve
+                      </button>
+                    )}
+                    {(r.status === 'pending' || r.status === 'confirmed') && (
+                      <button
+                        onClick={() => handleUpdateStatus(r.id, 'cancelled')}
+                        className="px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )) : (
+                <p className="text-sm text-gray-500 py-4 text-center">No assigned machine rentals yet.</p>
+              )}
             </div>
           </div>
         </div>
