@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../config/data-source";
-import { Booking } from "../entities/Booking";
+import { Booking, BookingStatus } from "../entities/Booking";
+import { User, UserRole } from "../entities/User";
 import { AuthRequest } from "../middleware/auth";
+import { Facility } from "../entities/Facility";
 
 export class BookingController {
     static async getMyBookings(req: Request, res: Response): Promise<void> {
@@ -11,11 +13,127 @@ export class BookingController {
             const bookings = await AppDataSource.getRepository(Booking).find({
                 where: { user: { id: userId } },
                 order: { bookingDate: "DESC" },
-                relations: ["facility"]
+                relations: ["facility", "user"]
             });
             res.json(bookings);
         } catch (error) {
             console.error("Get bookings error:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+
+    static async getAllBookings(req: Request, res: Response): Promise<void> {
+        try {
+            const bookings = await AppDataSource.getRepository(Booking).find({
+                order: { bookingDate: "DESC" },
+                relations: ["facility", "user"]
+            });
+            res.json(bookings);
+        } catch (error) {
+            console.error("Get all bookings error:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+
+    static async getAvailability(req: Request, res: Response): Promise<void> {
+        const { date, facilityId } = req.query;
+
+        if (!date || !facilityId) {
+            res.status(400).json({ message: "Date and facilityId are required" });
+            return;
+        }
+
+        try {
+            const bookingRepository = AppDataSource.getRepository(Booking);
+
+            const bookings = await bookingRepository.find({
+                where: {
+                    facility: { id: String(facilityId) },
+                    bookingDate: new Date(String(date)),
+                }
+            });
+
+            // Consider confirmed and pending bookings as 'booked' times
+            const bookedTimes = bookings
+                .filter(b => b.status !== BookingStatus.CANCELLED)
+                .map(b => b.startTime);
+
+            res.json({ bookedTimes });
+        } catch (error) {
+            console.error("Get availability error:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+
+    static async createBooking(req: Request, res: Response): Promise<void> {
+        const userId = (req as AuthRequest).user?.userId;
+        const { facilityId, bookingDate, startTime, duration, amount, coachId } = req.body;
+
+        try {
+            const bookingRepository = AppDataSource.getRepository(Booking);
+            const userRepository = AppDataSource.getRepository(User);
+            const facilityRepository = AppDataSource.getRepository(Facility);
+
+            const user = await userRepository.findOneBy({ id: userId });
+            if (!user) {
+                res.status(404).json({ message: "User not found" });
+                return;
+            }
+
+            const facility = await facilityRepository.findOneBy({ id: facilityId });
+            if (!facility) {
+                res.status(404).json({ message: "Facility not found" });
+                return;
+            }
+
+            let coach = null;
+            if (coachId) {
+                coach = await userRepository.findOneBy({ id: coachId, role: UserRole.COACH });
+                if (!coach) {
+                    res.status(404).json({ message: "Coach not found" });
+                    return;
+                }
+            }
+
+            const newBooking = bookingRepository.create({
+                user,
+                facility,
+                bookingDate: new Date(bookingDate),
+                startTime,
+                duration: Number(duration),
+                amount: Number(amount),
+                status: BookingStatus.PENDING,
+                coach: coach || undefined
+            });
+
+            await bookingRepository.save(newBooking);
+
+            res.status(201).json(newBooking);
+        } catch (error) {
+            console.error("Create booking error:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+
+    static async updateBookingStatus(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        try {
+            const bookingRepository = AppDataSource.getRepository(Booking);
+            const booking = await bookingRepository.findOneBy({ id: String(id) });
+
+            if (!booking) {
+                res.status(404).json({ message: "Booking not found" });
+                return;
+            }
+
+            booking.status = status as BookingStatus;
+            await bookingRepository.save(booking);
+
+            res.json(booking);
+        } catch (error) {
+            console.error("Update booking status error:", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }

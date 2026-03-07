@@ -44,6 +44,10 @@ export class Booking {
     @IsEnum(BookingStatus)
     status!: BookingStatus;
 
+    @ManyToOne(() => User, { nullable: true, eager: true })
+    @JoinColumn({ name: "coach_id" })
+    coach?: User;
+
     // Relations
     @ManyToOne(() => User, (user) => user.bookings)
     @JoinColumn({ name: "user_id" })

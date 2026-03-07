@@ -34,16 +34,15 @@ export default function Header({ user, onLogout, currentPage, onNavigate }: Head
       case 'player':
         return [
           { id: 'dashboard', label: 'Dashboard' },
-          { id: 'booking', label: 'Book Court' },
-          { id: 'rental', label: 'Rent Machine' },
+          { id: 'booking', label: 'Bookings' },
           { id: 'shop', label: 'Shop' },
-          { id: 'stats', label: 'Stats' }
+          { id: 'stats', label: 'Stats' },
+          { id: 'profile', label: 'Profile' }
         ];
       case 'guest':
         return [
           { id: 'dashboard', label: 'Dashboard' },
-          { id: 'booking', label: 'Book Court' },
-          { id: 'rental', label: 'Rent Machine' },
+          { id: 'booking', label: 'Bookings' },
           { id: 'shop', label: 'Shop' }
         ];
       default:
@@ -81,11 +80,10 @@ export default function Header({ user, onLogout, currentPage, onNavigate }: Head
                 <button
                   key={item.id}
                   onClick={() => onNavigate(item.id)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    currentPage === item.id
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentPage === item.id
                       ? 'bg-green-100 text-green-700'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   {item.label}
                 </button>
@@ -100,7 +98,7 @@ export default function Header({ user, onLogout, currentPage, onNavigate }: Head
                 <Bell className="w-5 h-5" />
               </button>
             )}
-            
+
             <div className="flex items-center space-x-3">
               {user.avatar ? (
                 <img

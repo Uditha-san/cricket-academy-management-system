@@ -1,4 +1,4 @@
-import { Calendar, Wrench, ShoppingBag, TrendingUp, Trophy, Target } from 'lucide-react';
+import { Calendar, ShoppingBag, TrendingUp, Trophy, Target, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useEffect, useState } from 'react';
@@ -10,20 +10,25 @@ interface PlayerDashboardProps {
 
 export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
   const { user } = useAuth();
-  const { bookings, feedbacks } = useData();
+  const { bookings, feedbacks, refreshBookings } = useData();
   const [performance, setPerformance] = useState<any>(null);
+  const [showBookingsModal, setShowBookingsModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
   useEffect(() => {
     if (user && user.id !== 'guest') {
       api.get('/users/profile').then(res => {
         setPerformance(res.data.performance);
       }).catch(console.error);
+
+      refreshBookings().catch(console.error);
     }
   }, [user]);
 
   const myBookings = bookings.filter(b => b.userId === user?.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const upcomingBookings = myBookings.filter(b => new Date(b.date) >= new Date()).slice(0, 2);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const upcomingBookings = myBookings.filter(b => b.date >= todayStr).slice(0, 5); // Let's show up to 5
 
   const latestFeedback = feedbacks.find(f => f.playerId === user?.id);
 
@@ -42,16 +47,16 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
   const quickActions = [
     {
       id: 'booking',
-      title: 'Book Court',
-      description: 'Reserve your practice time',
+      title: 'Make a Booking',
+      description: 'Reserve court or machines',
       icon: Calendar,
       color: 'bg-green-500'
     },
     {
-      id: 'rental',
-      title: 'Rent Machine',
-      description: 'Bowling & batting practice',
-      icon: Wrench,
+      id: 'profile',
+      title: 'My Profile',
+      description: 'Update your details',
+      icon: UserIcon,
       color: 'bg-blue-500'
     },
     {
@@ -80,7 +85,10 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl p-4 shadow-lg">
+        <div
+          onClick={() => setShowBookingsModal(true)}
+          className="bg-white rounded-xl p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow ring-2 ring-transparent hover:ring-yellow-500"
+        >
           <div className="flex items-center">
             <Trophy className="w-8 h-8 text-yellow-500 mr-3" />
             <div>
@@ -148,7 +156,11 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
           {upcomingBookings.length > 0 ? (
             <div className="space-y-4">
               {upcomingBookings.map((booking, index) => (
-                <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                <div
+                  key={index}
+                  onClick={() => setSelectedBooking(booking)}
+                  className="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                >
                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
                     <Calendar className="w-6 h-6 text-green-600" />
                   </div>
@@ -197,6 +209,78 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
           )}
         </div>
       </div>
+
+      {/* Booking Details Modal */}
+      {selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full relative">
+            <button
+              onClick={() => setSelectedBooking(null)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 font-bold"
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-bold mb-4">Booking Details</h2>
+            <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+              <p><strong>Facility:</strong> {selectedBooking.courtName}</p>
+              <p><strong>Date:</strong> {selectedBooking.date}</p>
+              <p><strong>Time:</strong> {selectedBooking.timeSlot}</p>
+              <p><strong>Amount:</strong> Rs.{selectedBooking.amount}</p>
+              <p><strong>Status:</strong> <span className={`font-medium ${selectedBooking.status === 'Confirmed' ? 'text-green-600' : selectedBooking.status === 'Pending' ? 'text-yellow-600' : 'text-red-600'}`}>{selectedBooking.status}</span></p>
+              <p className="text-xs text-gray-400 mt-4">Booking ID: {selectedBooking.id}</p>
+            </div>
+            <button
+              onClick={() => setSelectedBooking(null)}
+              className="mt-6 w-full bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* All Bookings Modal */}
+      {showBookingsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full relative max-h-[80vh] flex flex-col">
+            <button
+              onClick={() => setShowBookingsModal(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 font-bold"
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-bold mb-4">My Bookings History</h2>
+            <div className="overflow-y-auto space-y-3 flex-1 pr-2">
+              {myBookings.length > 0 ? (
+                myBookings.map((booking, index) => (
+                  <div
+                    key={index}
+                    onClick={() => {
+                      setShowBookingsModal(false);
+                      setSelectedBooking(booking);
+                    }}
+                    className="flex justify-between items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                  >
+                    <div>
+                      <p className="font-semibold">{booking.courtName}</p>
+                      <p className="text-sm text-gray-600">{booking.date} at {booking.timeSlot}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-medium ${booking.status === 'Confirmed' ? 'text-green-600' : booking.status === 'Pending' ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {booking.status}
+                      </p>
+                      <p className="text-sm">Rs.{booking.amount}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">No bookings found in history.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

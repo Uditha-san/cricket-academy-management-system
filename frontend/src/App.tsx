@@ -12,6 +12,7 @@ import PlayerDashboard from './pages/player/PlayerDashboard';
 import CoachDashboard from './pages/coach/CoachDashboard';
 import AttendancePage from './pages/coach/AttendancePage';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import BookingSelectionPage from './pages/shared/BookingSelectionPage';
 import CourBookingPage from './pages/shared/CourtBookingPage';
 import MachineRentalPage from './pages/shared/MachineRentalPage';
 import EquipmentShopPage from './pages/shared/EquipmentShopPage';
@@ -40,8 +41,10 @@ function Dashboard() {
         case 'dashboard':
           return <GuestDashboard onNavigate={setCurrentPage} />;
         case 'booking':
+          return <BookingSelectionPage onNavigate={setCurrentPage} />;
+        case 'court-booking':
           return <CourBookingPage onNavigate={setCurrentPage} />;
-        case 'rental':
+        case 'machine-rental':
           return <MachineRentalPage onNavigate={setCurrentPage} />;
         case 'shop':
           return <EquipmentShopPage onNavigate={setCurrentPage} />;
@@ -55,8 +58,10 @@ function Dashboard() {
         case 'dashboard':
           return <PlayerDashboard onNavigate={setCurrentPage} />;
         case 'booking':
+          return <BookingSelectionPage onNavigate={setCurrentPage} />;
+        case 'court-booking':
           return <CourBookingPage onNavigate={setCurrentPage} />;
-        case 'rental':
+        case 'machine-rental':
           return <MachineRentalPage onNavigate={setCurrentPage} />;
         case 'shop':
           return <EquipmentShopPage onNavigate={setCurrentPage} />;

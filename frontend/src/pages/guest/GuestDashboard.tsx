@@ -8,19 +8,11 @@ export default function GuestDashboard({ onNavigate }: GuestDashboardProps) {
   const quickActions = [
     {
       id: 'booking',
-      title: 'Book Court',
-      description: 'Reserve a court for your game',
+      title: 'Facilities Booking',
+      description: 'Reserve courts & machines',
       icon: Calendar,
       color: 'bg-green-500',
       action: () => onNavigate('booking')
-    },
-    {
-      id: 'rental',
-      title: 'Rent Machine',
-      description: 'Bowling & batting machines',
-      icon: Wrench,
-      color: 'bg-blue-500',
-      action: () => onNavigate('rental')
     },
     {
       id: 'shop',
@@ -118,9 +110,8 @@ export default function GuestDashboard({ onNavigate }: GuestDashboardProps) {
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`w-4 h-4 ${
-                        i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                      }`}
+                      className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                        }`}
                     />
                   ))}
                 </div>

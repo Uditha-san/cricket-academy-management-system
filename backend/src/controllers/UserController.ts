@@ -4,6 +4,7 @@ import { User } from "../entities/User";
 import { Feedback } from "../entities/Feedback";
 import { Message } from "../entities/Message";
 import { UserRole } from "../entities/User";
+import { Booking, BookingStatus } from "../entities/Booking";
 
 export class UserController {
     static async getProfile(req: Request, res: Response): Promise<void> {
@@ -126,12 +127,34 @@ export class UserController {
 
     static async getCoaches(req: Request, res: Response): Promise<void> {
         try {
+            const { date, time } = req.query;
+
             const userRepository = AppDataSource.getRepository(User);
             const coaches = await userRepository.find({
                 where: { role: UserRole.COACH },
                 select: ["id", "name", "email", "avatar"]
             });
-            res.json(coaches);
+
+            if (!date || !time) {
+                res.json(coaches);
+                return;
+            }
+
+            const bookingRepository = AppDataSource.getRepository(Booking);
+            const bookingsWithCoaches = await bookingRepository.find({
+                where: {
+                    bookingDate: new Date(String(date)),
+                    startTime: String(time)
+                },
+                relations: ["coach"]
+            });
+
+            const busyCoachIds = bookingsWithCoaches
+                .filter(b => b.coach && b.status !== BookingStatus.CANCELLED)
+                .map(b => b.coach!.id);
+
+            const availableCoaches = coaches.filter(c => !busyCoachIds.includes(c.id));
+            res.json(availableCoaches);
         } catch (error) {
             console.error("Get coaches error:", error);
             res.status(500).json({ message: "Internal server error" });

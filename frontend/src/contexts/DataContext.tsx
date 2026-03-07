@@ -57,6 +57,7 @@ interface DataContextType {
     addBooking: (booking: Booking) => void;
     updateBookingStatus: (id: string, status: Booking['status']) => void;
     addFeedback: (feedback: CoachFeedback) => void;
+    refreshBookings: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -112,26 +113,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
             try {
                 const token = localStorage.getItem('token');
                 if (token) {
-                    const [profileRes, bookingsRes] = await Promise.all([
-                        api.get('/users/profile'),
-                        api.get('/bookings/my')
+                    const profileRes = await api.get('/users/profile');
+                    const profileData = profileRes.data;
+                    const endpoint = profileData.role === 'admin' ? '/bookings' : '/bookings/my';
+
+                    const [bookingsRes, feedbackRes] = await Promise.all([
+                        api.get(endpoint),
+                        api.get('/users/notifications')
                     ]);
 
                     const userProfile = profileRes.data;
                     setUsers([userProfile]); // For now, just set the current user
 
+                    // Transform backend feedbacks
+                    const backendFeedbacks = feedbackRes.data.map((f: any) => ({
+                        id: f.id,
+                        playerId: userProfile.id,
+                        coachId: 'unknown',
+                        coachName: f.coachName,
+                        date: new Date(f.createdAt).toISOString().split('T')[0],
+                        category: f.area,
+                        rating: f.rating,
+                        comment: f.feedback,
+                        areasForImprovement: []
+                    }));
+                    setFeedbacks(backendFeedbacks);
+
                     // Transform backend bookings to frontend Booking interface
                     const backendBookings = bookingsRes.data.map((b: any) => ({
                         id: b.id,
-                        userId: b.user?.id,
-                        userName: userProfile.name, // Assuming own bookings
-                        userEmail: userProfile.email,
+                        userId: b.user?.id || userProfile.id,
+                        userName: b.user ? b.user.name : userProfile.name,
+                        userEmail: b.user ? b.user.email : userProfile.email,
                         courtId: b.facility?.id || 'unknown',
                         courtName: b.facility?.name || 'Unknown Court',
                         date: new Date(b.bookingDate).toISOString().split('T')[0],
                         timeSlot: `${b.startTime} - ${calculateEndTime(b.startTime, b.duration)}`,
                         amount: parseFloat(b.amount),
-                        status: b.status.charAt(0).toUpperCase() + b.status.slice(1), // Capitalize
+                        status: b.status.charAt(0).toUpperCase() + b.status.slice(1),
                         bookingDate: new Date(b.createdAt).toISOString().split('T')[0]
                     }));
                     setBookings(backendBookings);
@@ -149,6 +168,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const endHours = Math.floor(totalMinutes / 60);
         const endMinutes = totalMinutes % 60;
         return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+    };
+
+    const refreshBookings = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (token) {
+                const userProfileRes = await api.get('/users/profile');
+                const userProfile = userProfileRes.data;
+                const endpoint = userProfile.role === 'admin' ? '/bookings' : '/bookings/my';
+                const res = await api.get(endpoint);
+                const backendBookings = res.data.map((b: any) => ({
+                    id: b.id,
+                    userId: b.user?.id || userProfile.id,
+                    userName: b.user ? b.user.name : userProfile.name,
+                    userEmail: b.user ? b.user.email : userProfile.email,
+                    courtId: b.facility?.id || 'unknown',
+                    courtName: b.facility?.name || 'Unknown Court',
+                    date: new Date(b.bookingDate).toISOString().split('T')[0],
+                    timeSlot: `${b.startTime} - ${calculateEndTime(b.startTime, b.duration)}`,
+                    amount: parseFloat(b.amount),
+                    status: b.status.charAt(0).toUpperCase() + b.status.slice(1),
+                    bookingDate: new Date(b.createdAt).toISOString().split('T')[0]
+                }));
+                setBookings(backendBookings);
+            }
+        } catch (error) {
+            console.error("Failed to refresh bookings map", error);
+        }
     };
 
     // User management functions removed
@@ -171,8 +218,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }));
     };
 
-    const updateBookingStatus = (id: string, status: Booking['status']) => {
-        setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+    const updateBookingStatus = async (id: string, status: Booking['status']) => {
+        try {
+            await api.put(`/bookings/${id}/status`, { status });
+            // Update local state smoothly for instant UI feedback
+            setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+        } catch (error) {
+            console.error("Failed to change booking status:", error);
+            alert("Error trying to change status. Please try refreshing.");
+        }
     };
 
     const addFeedback = (feedback: CoachFeedback) => {
@@ -186,7 +240,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             feedbacks,
             addBooking,
             updateBookingStatus,
-            addFeedback
+            addFeedback,
+            refreshBookings
         }}>
             {children}
         </DataContext.Provider>
