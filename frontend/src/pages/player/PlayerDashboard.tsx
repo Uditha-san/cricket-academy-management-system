@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
+import MyOrders from '../../components/MyOrders';
 
 interface PlayerDashboardProps {
   onNavigate: (page: string) => void;
@@ -252,6 +253,15 @@ export default function PlayerDashboard({ onNavigate }: PlayerDashboardProps) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* My Equipment Orders */}
+      <div className="mt-8 bg-white rounded-xl p-6 shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">My Equipment Orders</h2>
+          <button onClick={() => onNavigate('shop')} className="text-sm text-green-600 hover:underline font-medium">Shop Equipment →</button>
+        </div>
+        <MyOrders />
       </div>
 
       {/* Booking Details Modal */}

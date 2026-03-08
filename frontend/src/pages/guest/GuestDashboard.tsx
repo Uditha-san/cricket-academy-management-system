@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, ShoppingBag, Clock, MapPin, Star, MessageSquare, Send, Wrench, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
+import MyOrders from '../../components/MyOrders';
 
 interface GuestDashboardProps {
   onNavigate: (page: string) => void;
@@ -307,6 +308,15 @@ export default function GuestDashboard({ onNavigate }: GuestDashboardProps) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* My Equipment Orders */}
+      <div className="mt-8 bg-white rounded-xl p-6 shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">My Equipment Orders</h2>
+          <button onClick={() => onNavigate('shop')} className="text-sm text-green-600 hover:underline font-medium">Shop Equipment →</button>
+        </div>
+        <MyOrders />
       </div>
     </div>
   );

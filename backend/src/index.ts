@@ -11,6 +11,8 @@ import coachRoutes from './routes/coach';
 import facilityRoutes from './routes/facility';
 import rentalRoutes from './routes/rental';
 import guestReviewRoutes from './routes/guestReview';
+import orderRoutes from './routes/order';
+import equipmentRoutes from './routes/equipment';
 
 dotenv.config();
 
@@ -28,6 +30,8 @@ app.use("/api/coach", coachRoutes);
 app.use("/api/facility", facilityRoutes);
 app.use("/api/rentals", rentalRoutes);
 app.use("/api/guest-reviews", guestReviewRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/equipment", equipmentRoutes);
 
 app.get('/', (req, res) => {
     res.send('Cricket Academy API is running');
