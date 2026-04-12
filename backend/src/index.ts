@@ -13,6 +13,7 @@ import rentalRoutes from './routes/rental';
 import guestReviewRoutes from './routes/guestReview';
 import orderRoutes from './routes/order';
 import equipmentRoutes from './routes/equipment';
+import paymentRoutes from './routes/payment';
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use("/api/rentals", rentalRoutes);
 app.use("/api/guest-reviews", guestReviewRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/equipment", equipmentRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.get('/', (req, res) => {
     res.send('Cricket Academy API is running');
@@ -47,3 +49,5 @@ AppDataSource.initialize()
     .catch((err) => {
         console.error("Error during Data Source initialization:", err);
     });
+
+// trigger restart

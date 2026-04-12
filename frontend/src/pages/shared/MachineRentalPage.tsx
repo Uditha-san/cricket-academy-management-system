@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Wrench, Clock, ArrowLeft, Check, Users, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
+import PaymentModal from '../../components/payment/PaymentModal';
 
 interface MachineRentalPageProps {
   onNavigate: (page: string) => void;
@@ -44,6 +45,8 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [pendingRentalIds, setPendingRentalIds] = useState<string[]>([]);
 
   // Fetch machines from DB
   useEffect(() => {
@@ -127,12 +130,45 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
           coachId: rentalType === 'coach' ? selectedCoach : undefined
         })
       );
-      await Promise.all(promises);
-      setShowConfirmation(true);
+      const responses = await Promise.all(promises);
+      const newRentalIds = responses.map(res => res.data.id);
+      
+      setPendingRentalIds(newRentalIds);
+      setIsPaymentModalOpen(true);
+      setIsSubmitting(false);
+
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to submit rental. Please try again.');
-    } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentMethod: string) => {
+    setIsPaymentModalOpen(false);
+    
+    // Process payment for all pending rentals
+    try {
+      if (pendingRentalIds.length > 0 && selectedMachineData) {
+        const paymentPromises = pendingRentalIds.map(id => {
+          return api.post('/payments/process', {
+            amount: pricePerSlot,
+            paymentMethod: paymentMethod,
+            referenceType: 'rental',
+            referenceId: id
+          });
+        });
+
+        await Promise.all(paymentPromises);
+        
+        setShowConfirmation(true);
+        setTimeout(() => {
+          setShowConfirmation(false);
+          onNavigate('dashboard');
+        }, 3000);
+      }
+    } catch (error) {
+      console.error("Payment processing failed:", error);
+      alert("Payment failed. Please contact administrator.");
     }
   };
 
@@ -273,10 +309,10 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
                             onClick={() => !isBooked && handleSlotToggle(slot.id)}
                             disabled={isBooked}
                             className={`p-3 rounded-lg border text-xs font-medium transition-colors ${isSelected
-                                ? 'border-green-500 bg-green-500 text-white'
-                                : isBooked
-                                  ? 'border-gray-100 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                                  : 'border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50'
+                              ? 'border-green-500 bg-green-500 text-white'
+                              : isBooked
+                                ? 'border-gray-100 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                                : 'border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50'
                               }`}
                           >
                             <Clock className={`w-3 h-3 mx-auto mb-1 ${isBooked ? 'text-gray-400' : ''}`} />
@@ -374,7 +410,7 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
                   disabled={isSubmitting || (rentalType === 'coach' && !selectedCoach)}
                   className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isSubmitting ? 'Submitting...' : 'Confirm Rental'}
+                  {isSubmitting ? 'Processing...' : 'Proceed to Payment'}
                 </button>
                 {rentalType === 'coach' && !selectedCoach && (
                   <p className="text-xs text-red-500 text-center">Please select a coach above</p>
@@ -389,6 +425,14 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
           </div>
         </div>
       </div>
+
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        amount={total}
+        onPaymentSuccess={handlePaymentSuccess}
+        title="Complete Machine Rental"
+      />
     </div>
   );
 }

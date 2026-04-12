@@ -4,6 +4,7 @@ import { Rental, RentalStatus } from "../entities/Rental";
 import { User, UserRole } from "../entities/User";
 import { Facility } from "../entities/Facility";
 import { AuthRequest } from "../middleware/auth";
+import { Payment, PaymentStatus } from "../entities/Payment";
 import {
     sendBookingApprovedToPlayer,
     BookingEmailData
@@ -178,6 +179,23 @@ export class RentalController {
                     });
                 } catch (emailErr) {
                     console.error("Rental confirm email error:", emailErr);
+                }
+            } else if (status === RentalStatus.CANCELLED) {
+                // Handle automatic refund
+                try {
+                    const paymentRepository = AppDataSource.getRepository(Payment);
+                    const payment = await paymentRepository.findOne({ where: { rental: { id: rental.id } } });
+                    
+                    if (payment && payment.status === PaymentStatus.COMPLETED) {
+                        payment.status = PaymentStatus.REFUNDED;
+                        await paymentRepository.save(payment);
+                        console.log(`Payment ${payment.transactionId} refunded for cancelled rental ${rental.id}`);
+                        
+                        // Note: In a real-world scenario with Stripe, you would call the Stripe API here:
+                        // await stripe.refunds.create({ charge: payment.transactionId });
+                    }
+                } catch (refundError) {
+                    console.error("Refund processing error:", refundError);
                 }
             }
 

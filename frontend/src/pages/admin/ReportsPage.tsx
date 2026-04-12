@@ -23,18 +23,21 @@ export default function ReportsPage({ onNavigate }: ReportsPageProps) {
   const { bookings } = useData();
   const [players, setPlayers] = useState<any[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        const [playersRes, ordersRes] = await Promise.all([
+        const [playersRes, ordersRes, productsRes] = await Promise.all([
           adminApi.getPlayers(),
-          api.get('/orders')
+          api.get('/orders'),
+          api.get('/equipment')
         ]);
         setPlayers(Array.isArray(playersRes) ? playersRes : []);
         setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : []);
+        setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
       } catch (error) {
         console.error('Failed to fetch report data:', error);
       } finally {
@@ -105,7 +108,7 @@ export default function ReportsPage({ onNavigate }: ReportsPageProps) {
     };
   }, [bookings, players, orders]);
 
-  const generatePDF = () => {
+  const generateBusinessSummaryPDF = () => {
     const doc = new jsPDF();
     const dateStr = new Date().toLocaleDateString();
 
@@ -165,6 +168,207 @@ export default function ReportsPage({ onNavigate }: ReportsPageProps) {
     doc.save(`Academy_Report_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
+  const generateFinancialAuditPDF = () => {
+    const doc = new jsPDF();
+    const dateStr = new Date().toLocaleDateString();
+
+    doc.setFontSize(22);
+    doc.setTextColor(22, 163, 74);
+    doc.text('Cricket Academy Pro 360', 105, 20, { align: 'center' });
+
+    doc.setFontSize(16);
+    doc.setTextColor(50, 50, 50);
+    doc.text('Financial Audit Report', 105, 30, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${dateStr}`, 105, 38, { align: 'center' });
+
+    doc.setFontSize(14);
+    doc.text('Revenue Breakdown', 14, 50);
+    doc.setLineWidth(0.5);
+    doc.line(14, 52, 196, 52);
+
+    const validBookings = bookings.filter(b => b.status !== 'Cancelled');
+    const validOrders = orders.filter(o => o.status !== 'cancelled');
+
+    const bookingRev = validBookings.reduce((sum, b) => sum + Number(b.amount || 0), 0);
+    const orderRev = validOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+    const totalRev = bookingRev + orderRev;
+
+    autoTable(doc, {
+      startY: 55,
+      head: [['Category', 'Amount (Rs)', '% of Total Revenue']],
+      body: [
+        ['Facility Bookings', bookingRev.toLocaleString(), `${((bookingRev/totalRev)*100 || 0).toFixed(1)}%`],
+        ['Equipment Sales', orderRev.toLocaleString(), `${((orderRev/totalRev)*100 || 0).toFixed(1)}%`],
+        ['Total Revenue', totalRev.toLocaleString(), '100%']
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [22, 163, 74] }
+    });
+
+    doc.text('Recent Transactions', 14, (doc as any).lastAutoTable.finalY + 15);
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [['Date', 'Type', 'Amount', 'Status']],
+      body: stats.recentTransactions.map(t => [
+        t.date,
+        t.type,
+        `Rs.${Number(t.amount).toLocaleString()}`,
+        t.status
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [37, 99, 235] }
+    });
+
+    doc.save(`Financial_Audit_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const generatePlayerAnalyticsPDF = () => {
+    const doc = new jsPDF();
+    const dateStr = new Date().toLocaleDateString();
+
+    doc.setFontSize(22);
+    doc.setTextColor(22, 163, 74);
+    doc.text('Cricket Academy Pro 360', 105, 20, { align: 'center' });
+
+    doc.setFontSize(16);
+    doc.setTextColor(50, 50, 50);
+    doc.text('Player Analytics Report', 105, 30, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${dateStr}`, 105, 38, { align: 'center' });
+
+    doc.setFontSize(14);
+    doc.text('Player Overview', 14, 50);
+    doc.setLineWidth(0.5);
+    doc.line(14, 52, 196, 52);
+
+    autoTable(doc, {
+      startY: 55,
+      head: [['Total Registered Players', 'Roles Represented']],
+      body: [
+        [players.length.toString(), new Set(players.map(p => p.role || 'Unknown')).size.toString()]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [22, 163, 74] }
+    });
+
+    const rolesCount = players.reduce((acc, p) => {
+        const role = p.role || 'Unknown';
+        acc[role] = (acc[role] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    doc.text('Player Roles Distribution', 14, (doc as any).lastAutoTable.finalY + 15);
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [['Role', 'Number of Players']],
+      body: Object.entries(rolesCount).map(([role, count]) => [role, count.toString()]),
+      theme: 'striped',
+      headStyles: { fillColor: [37, 99, 235] }
+    });
+
+    doc.text('All Players List', 14, (doc as any).lastAutoTable.finalY + 15);
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [['Name', 'Email', 'Role', 'Batting Style', 'Bowling Style']],
+      body: players.map(p => [
+        p.name || '-', 
+        p.email || '-', 
+        p.role || '-', 
+        p.playerProfile?.battingStyle || p.battingStyle || '-', 
+        p.playerProfile?.bowlingStyle || p.bowlingStyle || '-'
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [22, 163, 74] }
+    });
+
+    doc.text('Player Performance Stats', 14, (doc as any).lastAutoTable.finalY + 15);
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [['Name', 'Matches', 'Runs', 'Bat Avg', 'Strike Rate', 'Wickets', 'Bowl Avg', 'Economy']],
+      body: players.map(p => {
+        const perf = p.performance || {};
+        return [
+          p.name || '-',
+          perf.matchesPlayed?.toString() || '0',
+          perf.totalRuns?.toString() || '0',
+          perf.battingAverage?.toString() || '0',
+          perf.strikeRate?.toString() || '0',
+          perf.totalWickets?.toString() || '0',
+          perf.bowlingAverage?.toString() || '0',
+          perf.economyRate?.toString() || '0'
+        ];
+      }),
+      theme: 'striped',
+      headStyles: { fillColor: [37, 99, 235] }
+    });
+
+    doc.save(`Player_Analytics_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const generateInventoryStatusPDF = () => {
+    const doc = new jsPDF();
+    const dateStr = new Date().toLocaleDateString();
+
+    doc.setFontSize(22);
+    doc.setTextColor(22, 163, 74);
+    doc.text('Cricket Academy Pro 360', 105, 20, { align: 'center' });
+
+    doc.setFontSize(16);
+    doc.setTextColor(50, 50, 50);
+    doc.text('Inventory Status Report', 105, 30, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${dateStr}`, 105, 38, { align: 'center' });
+
+    doc.setFontSize(14);
+    doc.text('Stock Overview', 14, 50);
+    doc.setLineWidth(0.5);
+    doc.line(14, 52, 196, 52);
+    
+    const totalItems = products.reduce((sum, p) => sum + (p.stock || 0), 0);
+    const lowStockItems = products.filter(p => (p.stock || 0) < 5 && (p.stock || 0) > 0).length;
+    const outOfStockItems = products.filter(p => (p.stock || 0) === 0).length;
+
+    autoTable(doc, {
+      startY: 55,
+      head: [['Total Product Types', 'Total Items in Stock', 'Low Stock Types', 'Out of Stock']],
+      body: [
+        [products.length.toString(), totalItems.toString(), lowStockItems.toString(), outOfStockItems.toString()]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [22, 163, 74] }
+    });
+
+    doc.text('Detailed Inventory List', 14, (doc as any).lastAutoTable.finalY + 15);
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [['Product Name', 'Category', 'Price', 'Stock Level', 'Status']],
+      body: products.map(p => {
+        let status = 'In Stock';
+        if (p.stock === 0) status = 'Out of Stock';
+        else if (p.stock < 5) status = 'Low Stock';
+        return [
+          p.name || '-',
+          p.category || '-',
+          `Rs.${p.price?.toLocaleString() || '0'}`,
+          p.stock?.toString() || '0',
+          status
+        ];
+      }).sort((a, b) => {
+        const aStock = a[3] === '0' ? 0 : isNaN(Number(a[3])) ? 999 : Number(a[3]);
+        const bStock = b[3] === '0' ? 0 : isNaN(Number(b[3])) ? 999 : Number(b[3]);
+        return aStock - bStock;
+      }),
+      theme: 'striped',
+      headStyles: { fillColor: [37, 99, 235] }
+    });
+
+    doc.save(`Inventory_Status_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -189,7 +393,7 @@ export default function ReportsPage({ onNavigate }: ReportsPageProps) {
             <p className="text-gray-500">Live performance insights from your academy operations</p>
           </div>
           <button
-            onClick={generatePDF}
+            onClick={generateBusinessSummaryPDF}
             className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-100 transition-all flex items-center justify-center gap-2"
           >
             <Download className="w-5 h-5" />
@@ -281,11 +485,11 @@ export default function ReportsPage({ onNavigate }: ReportsPageProps) {
       <h2 className="text-xl font-bold text-gray-900 mb-4 px-2">Detailed Reports</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
-          { title: 'Financial Audit', icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50 shadow-green-100', desc: 'Revenue breakdown by facility and equipment sales.' },
-          { title: 'Player Analytics', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50 shadow-blue-100', desc: 'Member growth, attendance and participation trends.' },
-          { title: 'Inventory Status', icon: Package, color: 'text-purple-600', bg: 'bg-purple-50 shadow-purple-100', desc: 'Current stock levels and high-demand products.' },
+          { title: 'Financial Audit', icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50 shadow-green-100', desc: 'Revenue breakdown by facility and equipment sales.', onClick: generateFinancialAuditPDF },
+          { title: 'Player Analytics', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50 shadow-blue-100', desc: 'Member growth, attendance and participation trends.', onClick: generatePlayerAnalyticsPDF },
+          { title: 'Inventory Status', icon: Package, color: 'text-purple-600', bg: 'bg-purple-50 shadow-purple-100', desc: 'Current stock levels and high-demand products.', onClick: generateInventoryStatusPDF },
         ].map((card, i) => (
-          <button key={i} onClick={generatePDF} className="group p-6 bg-white rounded-2xl shadow-md border border-gray-50 text-left hover:shadow-xl hover:-translate-y-1 transition-all">
+          <button key={i} onClick={card.onClick} className="group p-6 bg-white rounded-2xl shadow-md border border-gray-50 text-left hover:shadow-xl hover:-translate-y-1 transition-all">
             <div className={`w-12 h-12 rounded-xl ${card.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
               <card.icon className={`w-6 h-6 ${card.color}`} />
             </div>

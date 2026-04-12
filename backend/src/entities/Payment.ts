@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToOne, JoinColumn } from "typeorm";
 import { Booking } from "./Booking";
+import { Rental } from "./Rental";
 import { IsNotEmpty, IsEnum, IsNumber, IsString } from "class-validator";
 
 export enum PaymentMethod {
@@ -43,9 +44,13 @@ export class Payment {
     @IsString()
     transactionId!: string;
 
-    @OneToOne(() => Booking)
+    @OneToOne(() => Booking, { nullable: true })
     @JoinColumn()
-    booking!: Booking;
+    booking?: Booking;
+
+    @OneToOne(() => Rental, { nullable: true })
+    @JoinColumn()
+    rental?: Rental;
 
     @CreateDateColumn()
     paymentDate!: Date;

@@ -4,6 +4,7 @@ import { Booking, BookingStatus } from "../entities/Booking";
 import { User, UserRole } from "../entities/User";
 import { AuthRequest } from "../middleware/auth";
 import { Facility } from "../entities/Facility";
+import { Payment, PaymentStatus } from "../entities/Payment";
 import {
     sendBookingConfirmationToPlayer,
     sendBookingNotificationToAdmin,
@@ -211,6 +212,23 @@ export class BookingController {
                     }
                 } catch (emailError) {
                     console.error("Approval email error:", emailError);
+                }
+            } else if (status === BookingStatus.CANCELLED) {
+                // Handle automatic refund
+                try {
+                    const paymentRepository = AppDataSource.getRepository(Payment);
+                    const payment = await paymentRepository.findOne({ where: { booking: { id: booking.id } } });
+                    
+                    if (payment && payment.status === PaymentStatus.COMPLETED) {
+                        payment.status = PaymentStatus.REFUNDED;
+                        await paymentRepository.save(payment);
+                        console.log(`Payment ${payment.transactionId} refunded for cancelled booking ${booking.id}`);
+                        
+                        // Note: In a real-world scenario with Stripe, you would call the Stripe API here:
+                        // await stripe.refunds.create({ charge: payment.transactionId });
+                    }
+                } catch (refundError) {
+                    console.error("Refund processing error:", refundError);
                 }
             }
             // --- End confirmation emails ---

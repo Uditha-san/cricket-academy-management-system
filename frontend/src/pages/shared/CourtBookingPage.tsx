@@ -3,6 +3,7 @@ import { Calendar, Clock, MapPin, ArrowLeft, Check, User as UserIcon } from 'luc
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import api from '../../api/axios';
+import PaymentModal from '../../components/payment/PaymentModal';
 
 interface CourtBookingPageProps {
   onNavigate: (page: string) => void;
@@ -23,6 +24,9 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
   const [isLoadingCourts, setIsLoadingCourts] = useState(true);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [pendingBookingIds, setPendingBookingIds] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     api.get('/facility/courts')
@@ -134,6 +138,7 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
     const amountPerSlot = Math.round((selectedCourtData.price + coachFee) * 1.18);
 
     try {
+      setIsSubmitting(true);
       // Create all bookings simultaneously via Promises
       const bookingPromises = selectedSlotsData.map((slotData) => {
         const payload = {
@@ -147,21 +152,51 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
         return api.post('/bookings', payload);
       });
 
-      await Promise.all(bookingPromises);
-
-      // Refresh data in background — don't block success on failure here
-      refreshBookings().catch(console.warn);
-
-      setShowConfirmation(true);
-      setTimeout(() => {
-        setShowConfirmation(false);
-        onNavigate('dashboard');
-      }, 2000);
+      const responses = await Promise.all(bookingPromises);
+      const newBookingIds = responses.map(res => res.data.id);
+      
+      setPendingBookingIds(newBookingIds);
+      setIsPaymentModalOpen(true);
+      setIsSubmitting(false);
 
     } catch (error: any) {
       console.error("Booking generation failed:", error);
+      setIsSubmitting(false);
       const msg = error?.response?.data?.message || error?.message || "Unknown error";
       alert(`Booking failed: ${msg}`);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentMethod: string) => {
+    setIsPaymentModalOpen(false);
+    
+    // Process payment for all pending bookings
+    try {
+      if (pendingBookingIds.length > 0 && selectedCourtData) {
+        const coachFee = bookingType === 'practice' ? 1000 : 0;
+        const amountPerSlot = Math.round((selectedCourtData.price + coachFee) * 1.18);
+
+        const paymentPromises = pendingBookingIds.map(id => {
+          return api.post('/payments/process', {
+            amount: amountPerSlot,
+            paymentMethod: paymentMethod,
+            referenceType: 'booking',
+            referenceId: id
+          });
+        });
+
+        await Promise.all(paymentPromises);
+        refreshBookings().catch(console.warn);
+        
+        setShowConfirmation(true);
+        setTimeout(() => {
+          setShowConfirmation(false);
+          onNavigate('dashboard');
+        }, 3000);
+      }
+    } catch (error) {
+      console.error("Payment processing failed:", error);
+      alert("Payment failed. Please contact administrator.");
     }
   };
 
@@ -405,10 +440,10 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
                 </div>
                 <button
                   onClick={handleBooking}
-                  disabled={bookingType === 'practice' && !selectedCoach}
+                  disabled={isSubmitting || (bookingType === 'practice' && !selectedCoach)}
                   className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Confirm Booking
+                  {isSubmitting ? 'Processing...' : 'Proceed to Payment'}
                 </button>
               </div>
             ) : (
@@ -420,6 +455,14 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
           </div>
         </div>
       </div>
+
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        amount={selectedCourtData && selectedSlots.length > 0 ? Math.round((((selectedCourtData.price || 0) * selectedSlots.length) + (bookingType === 'practice' && selectedCoach ? 1000 * selectedSlots.length : 0)) * 1.18) : 0}
+        onPaymentSuccess={handlePaymentSuccess}
+        title="Complete Court Booking"
+      />
     </div>
   );
 }
