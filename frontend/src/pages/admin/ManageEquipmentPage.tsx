@@ -394,9 +394,32 @@ export default function ManageEquipmentPage({ onNavigate }: ManageEquipmentPageP
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
-                <input type="text" value={formData.image || ''} onChange={e => setFormData(p => ({ ...p, image: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" required />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Image URL or Upload Photo</label>
+                <div className="flex gap-2">
+                  <input type="text" value={formData.image || ''} onChange={e => setFormData(p => ({ ...p, image: e.target.value }))}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                    placeholder="Provide image URL..." required={!formData.image} />
+                  <input type="file" id="image-upload" accept="image/*" className="hidden" 
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setFormData(p => ({ ...p, image: reader.result as string }));
+                        reader.readAsDataURL(file);
+                      }
+                    }} 
+                  />
+                  <label htmlFor="image-upload" className="cursor-pointer px-4 py-2 bg-gray-100 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap flex items-center">
+                    Upload Photo
+                  </label>
+                </div>
+                {formData.image && formData.image.length > 0 && (
+                  <div className="mt-2">
+                    <img src={formData.image} alt="Preview" className="h-24 w-auto object-cover rounded-lg border border-gray-200 shadow-sm" 
+                      onError={(e) => e.currentTarget.style.display = 'none'} 
+                      onLoad={(e) => e.currentTarget.style.display = 'block'} />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
