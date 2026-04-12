@@ -40,7 +40,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     .filter(o => o.status !== 'cancelled')
     .reduce((s, o) => s + Number(o.totalAmount), 0);
 
-  const pendingOrders = orders.filter(o => o.status === 'pending');
+  const actionableOrders = orders.filter(o => o.status === 'pending' || o.status === 'confirmed');
   const allOrdersCount = orders.filter(o => o.status !== 'cancelled').length;
 
   /* Quick-action: update order status from the dashboard */
@@ -67,11 +67,11 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     {
       title: 'Equipment Orders',
       value: allOrdersCount.toString(),
-      sub: pendingOrders.length > 0 ? `${pendingOrders.length} awaiting action` : 'All up to date',
+      sub: actionableOrders.length > 0 ? `${actionableOrders.length} awaiting action` : 'All up to date',
       icon: ShoppingCart,
       color: 'text-green-600 bg-green-100',
       onClick: () => onNavigate('equipment'),
-      badge: pendingOrders.length,
+      badge: actionableOrders.length,
     },
     {
       title: 'Active Players',
@@ -112,10 +112,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
           <p className="text-gray-500 mt-1">Manage your cricket academy operations</p>
         </div>
-        {pendingOrders.length > 0 && (
+        {actionableOrders.length > 0 && (
           <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-700 px-4 py-2.5 rounded-xl text-sm font-medium animate-pulse">
             <Bell className="w-4 h-4 shrink-0" />
-            {pendingOrders.length} new equipment order{pendingOrders.length !== 1 ? 's' : ''} need attention
+            {actionableOrders.length} new equipment order{actionableOrders.length !== 1 ? 's' : ''} need attention
           </div>
         )}
       </div>
@@ -158,9 +158,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             <div>
               <h2 className="text-lg font-semibold text-gray-900">New Equipment Orders</h2>
               <p className="text-xs text-gray-500">
-                {pendingOrders.length === 0
+                {actionableOrders.length === 0
                   ? 'All orders have been processed'
-                  : `${pendingOrders.length} order${pendingOrders.length !== 1 ? 's' : ''} waiting for confirmation`}
+                  : `${actionableOrders.length} order${actionableOrders.length !== 1 ? 's' : ''} waiting for action`}
               </p>
             </div>
           </div>
@@ -172,7 +172,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </button>
         </div>
 
-        {pendingOrders.length === 0 ? (
+        {actionableOrders.length === 0 ? (
           <div className="text-center py-10 text-gray-400">
             <Check className="w-10 h-10 mx-auto mb-2 text-green-400" />
             <p className="font-medium text-gray-600">No pending orders</p>
@@ -180,7 +180,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
-            {pendingOrders.map(order => (
+            {actionableOrders.map(order => (
               <div key={order.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start justify-between gap-4">
                   {/* Left: order info */}
@@ -237,13 +237,24 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       })}
                     </p>
                     <div className="flex items-center gap-2">
-                      <button
-                        disabled={updatingId === order.id}
-                        onClick={() => updateStatus(order.id, 'confirmed')}
-                        className="flex items-center gap-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        <Check className="w-3.5 h-3.5" /> Confirm
-                      </button>
+                      {order.status === 'pending' && (
+                        <button
+                          disabled={updatingId === order.id}
+                          onClick={() => updateStatus(order.id, 'confirmed')}
+                          className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Confirm
+                        </button>
+                      )}
+                      {order.status === 'confirmed' && (
+                        <button
+                          disabled={updatingId === order.id}
+                          onClick={() => updateStatus(order.id, 'shipped')}
+                          className="flex items-center gap-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          <Package className="w-3.5 h-3.5" /> Mark Shipped
+                        </button>
+                      )}
                       <button
                         disabled={updatingId === order.id}
                         onClick={() => updateStatus(order.id, 'cancelled')}
@@ -289,7 +300,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <div className="space-y-3">
             {[
               { label: 'Manage Bookings', page: 'bookings', icon: Calendar, bg: 'bg-blue-50   text-blue-700   hover:bg-blue-100' },
-              { label: 'Equipment Orders', page: 'equipment', icon: ShoppingCart, bg: 'bg-green-50  text-green-700  hover:bg-green-100', badge: pendingOrders.length },
+              { label: 'Equipment Orders', page: 'equipment', icon: ShoppingCart, bg: 'bg-green-50  text-green-700  hover:bg-green-100', badge: actionableOrders.length },
               { label: 'Manage Players', page: 'players', icon: Users, bg: 'bg-purple-50 text-purple-700 hover:bg-purple-100' },
               { label: 'View Reports', page: 'reports', icon: BarChart3, bg: 'bg-orange-50 text-orange-700 hover:bg-orange-100' },
             ].map(({ label, page, icon: Icon, bg, badge }) => (

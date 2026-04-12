@@ -39,7 +39,7 @@ export class OrderController {
                 deliveryPhone,
                 deliveryAddress,
                 totalAmount: total,
-                status: OrderStatus.PENDING,
+                status: OrderStatus.CONFIRMED,
             });
 
             const savedOrder = await orderRepo().save(order);
