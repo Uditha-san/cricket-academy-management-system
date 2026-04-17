@@ -17,6 +17,8 @@ export default function CoachDashboard() {
   const [assignedBookings, setAssignedBookings] = useState<any[]>([]);
   const [assignedRentals, setAssignedRentals] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'messages'>('overview');
+  const [bookingTab, setBookingTab] = useState<'confirmed' | 'pending' | 'completed'>('confirmed');
+  const [rentalTab, setRentalTab] = useState<'confirmed' | 'pending' | 'completed'>('confirmed');
 
   // Stats Modal State
   const [showStatsModal, setShowStatsModal] = useState(false);
@@ -38,12 +40,22 @@ export default function CoachDashboard() {
     }).catch(console.error);
   }, []);
 
-  const handleUpdateStatus = async (id: string, status: string) => {
+  const handleUpdateBookingStatus = async (id: string, status: string) => {
     try {
       await api.put(`/bookings/${id}/status`, { status });
       setAssignedBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
     } catch (error) {
       console.error("Failed to change booking status:", error);
+      alert("Error trying to change status.");
+    }
+  };
+
+  const handleUpdateRentalStatus = async (id: string, status: string) => {
+    try {
+      await api.put(`/rentals/${id}/status`, { status });
+      setAssignedRentals(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+    } catch (error) {
+      console.error("Failed to change rental status:", error);
       alert("Error trying to change status.");
     }
   };
@@ -155,7 +167,14 @@ export default function CoachDashboard() {
             <Users className="w-8 h-8 text-blue-500" />
           </div>
         </div>
-        <div className="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500">
+        <div 
+          className="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500 cursor-pointer hover:bg-gray-50 transition-colors"
+          onClick={() => {
+            setBookingTab('confirmed');
+            document.getElementById('upcoming-sessions')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          title="Click to view assigned sessions"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Assigned Sessions</p>
@@ -391,99 +410,177 @@ export default function CoachDashboard() {
           </div>
 
           {/* Upcoming Sessions */}
-          <div className="bg-white rounded-xl p-6 shadow-lg">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Upcoming Sessions</h2>
+          <div id="upcoming-sessions" className="bg-white rounded-xl p-6 shadow-lg scroll-mt-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Training Sessions</h2>
+              <div className="flex bg-gray-100 p-1 rounded-lg">
+                <button
+                  onClick={() => setBookingTab('confirmed')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md ${bookingTab === 'confirmed' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  To Do
+                </button>
+                <button
+                  onClick={() => setBookingTab('pending')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center ${bookingTab === 'pending' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Pending
+                  {assignedBookings.filter(b => b.status === "Pending" || b.status === "pending").length > 0 && (
+                    <span className="ml-1.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+                      {assignedBookings.filter(b => b.status === "Pending" || b.status === "pending").length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setBookingTab('completed')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md ${bookingTab === 'completed' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+            
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-              {assignedBookings.length > 0 ? assignedBookings.map((session) => (
-                <div key={session.id} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center font-bold mb-3 md:mb-0 md:mr-4 ${session.status === 'Confirmed' ? 'bg-green-100 text-green-600' :
-                    session.status === 'Pending' ? 'bg-yellow-100 text-yellow-600' :
-                      'bg-red-100 text-red-600'
-                    }`}>
-                    {session.status.charAt(0)}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{session.playerName}</h3>
-                    <p className="text-sm text-gray-500">{session.date} • {session.startTime} ({session.duration}h)</p>
-                    <div className="flex items-center mt-1 text-xs text-gray-500">
-                      <span className={`font-semibold ${session.status === 'Confirmed' ? 'text-green-600' :
-                        session.status === 'Pending' ? 'text-yellow-600' : 'text-red-600'
-                        }`}>
-                        {session.status}
-                      </span>
-                      <span className="mx-2">•</span>
-                      <span>{session.courtName}</span>
+              {assignedBookings.filter((b: any) => b.status.toLowerCase() === bookingTab).length > 0 ? (
+                assignedBookings.filter((b: any) => b.status.toLowerCase() === bookingTab).map((session) => (
+                  <div key={session.id} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center font-bold mb-3 md:mb-0 md:mr-4 ${session.status === 'Completed' || session.status === 'completed' ? 'bg-blue-100 text-blue-600' : session.status === 'Confirmed' || session.status === 'confirmed' ? 'bg-green-100 text-green-600' :
+                      session.status === 'Pending' || session.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
+                        'bg-red-100 text-red-600'
+                      }`}>
+                      {session.status.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{session.playerName}</h3>
+                      <p className="text-sm text-gray-500">{session.date} • {session.startTime} ({session.duration}h)</p>
+                      <div className="flex items-center mt-1 text-xs text-gray-500">
+                        <span className={`font-semibold ${session.status === 'Confirmed' || session.status === 'confirmed' ? 'text-green-600' :
+                          session.status === 'Pending' || session.status === 'pending' ? 'text-yellow-600' : 
+                          session.status === 'Completed' || session.status === 'completed' ? 'text-blue-600' : 'text-red-600'
+                          }`}>
+                          {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+                        </span>
+                        <span className="mx-2">•</span>
+                        <span>{session.courtName}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col space-y-2 ml-4">
+                      {(session.status === 'Pending' || session.status === 'pending') && (
+                        <button
+                          onClick={() => handleUpdateBookingStatus(session.id, 'Confirmed')}
+                          className="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
+                        >
+                          Approve
+                        </button>
+                      )}
+                      {(session.status === 'Confirmed' || session.status === 'confirmed') && (
+                        <button
+                          onClick={() => handleUpdateBookingStatus(session.id, 'Completed')}
+                          className="px-3 py-1 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors flex items-center justify-center gap-1"
+                        >
+                          ✓ Done
+                        </button>
+                      )}
+                      {(session.status === 'Pending' || session.status === 'pending' || session.status === 'Confirmed' || session.status === 'confirmed') && (
+                        <button
+                          onClick={() => handleUpdateBookingStatus(session.id, 'Cancelled')}
+                          className="px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex flex-col space-y-2 ml-4">
-                    {session.status === 'Pending' && (
-                      <button
-                        onClick={() => handleUpdateStatus(session.id, 'Confirmed')}
-                        className="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
-                      >
-                        Approve
-                      </button>
-                    )}
-                    {(session.status === 'Pending' || session.status === 'Confirmed') && (
-                      <button
-                        onClick={() => handleUpdateStatus(session.id, 'Cancelled')}
-                        className="px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )) : (
-                <p className="text-sm text-gray-500 py-4 text-center">No assigned bookings yet.</p>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 py-4 text-center">No {bookingTab} sessions found.</p>
               )}
             </div>
           </div>
 
           {/* Assigned Machine Rentals */}
           <div className="bg-white rounded-xl p-6 shadow-lg">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Wrench className="w-5 h-5 text-purple-500" /> Assigned Machine Rentals
-            </h2>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-              {assignedRentals.length > 0 ? assignedRentals.map(r => (
-                <div key={r.id} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center font-bold mr-4 ${r.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                      r.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700'
-                    }`}>
-                    <Wrench className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{r.playerName}</h3>
-                    <p className="text-sm text-gray-500">{r.machineName} • {r.date} at {r.startTime} ({r.duration}h)</p>
-                    <span className={`text-xs font-semibold ${r.status === 'confirmed' ? 'text-green-600' :
-                        r.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
-                      }`}>
-                      {r.status?.charAt(0).toUpperCase() + r.status?.slice(1)}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <Wrench className="w-5 h-5 text-purple-500" /> Machine Rentals
+              </h2>
+              <div className="flex bg-gray-100 p-1 rounded-lg">
+                <button
+                  onClick={() => setRentalTab('confirmed')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md ${rentalTab === 'confirmed' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  To Do
+                </button>
+                <button
+                  onClick={() => setRentalTab('pending')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center ${rentalTab === 'pending' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Pending
+                  {assignedRentals.filter(r => r.status === "pending" || r.status === "Pending").length > 0 && (
+                    <span className="ml-1.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+                      {assignedRentals.filter(r => r.status === "pending" || r.status === "Pending").length}
                     </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setRentalTab('completed')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md ${rentalTab === 'completed' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+              {assignedRentals.filter((r: any) => r.status.toLowerCase() === rentalTab).length > 0 ? (
+                assignedRentals.filter((r: any) => r.status.toLowerCase() === rentalTab).map(r => (
+                  <div key={r.id} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center font-bold mr-4 ${r.status === 'completed' || r.status === 'Completed' ? 'bg-blue-100 text-blue-700' : r.status === 'confirmed' || r.status === 'Confirmed' ? 'bg-green-100 text-green-700' :
+                        r.status === 'pending' || r.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                      }`}>
+                      <Wrench className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{r.playerName}</h3>
+                      <p className="text-sm text-gray-500">{r.machineName} • {r.date} at {r.startTime} ({r.duration}h)</p>
+                      <span className={`text-xs font-semibold ${r.status === 'confirmed' || r.status === 'Confirmed' ? 'text-green-600' :
+                          r.status === 'pending' || r.status === 'Pending' ? 'text-yellow-600' :
+                          r.status === 'completed' || r.status === 'Completed' ? 'text-blue-600' : 'text-red-600'
+                        }`}>
+                        {r.status?.charAt(0).toUpperCase() + r.status?.slice(1)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col space-y-2 ml-4">
+                      {(r.status === 'pending' || r.status === 'Pending') && (
+                        <button
+                          onClick={() => handleUpdateRentalStatus(r.id, 'confirmed')}
+                          className="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
+                        >
+                          Approve
+                        </button>
+                      )}
+                      {(r.status === 'confirmed' || r.status === 'Confirmed') && (
+                        <button
+                          onClick={() => handleUpdateRentalStatus(r.id, 'completed')}
+                          className="px-3 py-1 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors flex items-center justify-center gap-1"
+                        >
+                          ✓ Done
+                        </button>
+                      )}
+                      {(r.status === 'pending' || r.status === 'Pending' || r.status === 'confirmed' || r.status === 'Confirmed') && (
+                        <button
+                          onClick={() => handleUpdateRentalStatus(r.id, 'cancelled')}
+                          className="px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-col space-y-2 ml-4">
-                    {r.status === 'pending' && (
-                      <button
-                        onClick={() => handleUpdateStatus(r.id, 'confirmed')}
-                        className="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
-                      >
-                        Approve
-                      </button>
-                    )}
-                    {(r.status === 'pending' || r.status === 'confirmed') && (
-                      <button
-                        onClick={() => handleUpdateStatus(r.id, 'cancelled')}
-                        className="px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )) : (
-                <p className="text-sm text-gray-500 py-4 text-center">No assigned machine rentals yet.</p>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 py-4 text-center">No {rentalTab} machine rentals found.</p>
               )}
             </div>
           </div>
