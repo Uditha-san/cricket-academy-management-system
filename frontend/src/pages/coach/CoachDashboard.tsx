@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Users, Calendar, TrendingUp, MessageSquare, Edit, Wrench } from 'lucide-react';
-import { useStats, PlayerStats } from '../../contexts/StatsContext';
+import { PlayerStats } from '../../contexts/StatsContext';
 import api from '../../api/axios';
-import PlayerStatsModal from '../../components/stats/PlayerStatsModal';
+import CoachMatchPerformanceModal from './CoachMatchPerformanceModal';
 
 export default function CoachDashboard() {
-  const { getStats, updateStats } = useStats();
   const [players, setPlayers] = useState<any[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
@@ -79,11 +78,62 @@ export default function CoachDashboard() {
     setShowStatsModal(true);
   };
 
-  const handleStatsSave = (newStats: PlayerStats) => {
+  const mapPlayerStats = (perf: any): PlayerStats => {
+    if (!perf) {
+        return {
+            batting: { totalRuns: 0, average: 0, strikeRate: 0, highestScore: 0, centuries: 0, fifties: 0 },
+            bowling: { totalWickets: 0, average: 0, economyRate: 0, bestFigures: '0/0', fiveWickets: 0, maidens: 0 },
+            fielding: { catches: 0, stumpings: 0, runOuts: 0 },
+            general: { matchesPlayed: 0, wins: 0, losses: 0, draws: 0 }
+        };
+    }
+    return {
+      batting: { totalRuns: perf.totalRuns || 0, highestScore: perf.highestScore || 0, average: parseFloat(perf.battingAverage) || 0, strikeRate: parseFloat(perf.strikeRate) || 0, centuries: perf.hundreds || 0, fifties: perf.fifties || 0 },
+      bowling: { totalWickets: perf.totalWickets || 0, average: parseFloat(perf.bowlingAverage) || 0, economyRate: parseFloat(perf.economyRate) || 0, fiveWickets: perf.fiveWicketHauls || 0, bestFigures: '0/0', maidens: 0 },
+      general: { matchesPlayed: perf.matchesPlayed || 0, wins: 0, losses: 0, draws: 0 },
+      fielding: { catches: perf.catches || 0, stumpings: perf.stumpings || 0, runOuts: 0 }
+    };
+  };
+
+  const flattenPlayerStats = (stats: PlayerStats) => {
+    return {
+        totalRuns: stats.batting.totalRuns,
+        highestScore: stats.batting.highestScore,
+        battingAverage: stats.batting.average,
+        strikeRate: stats.batting.strikeRate,
+        hundreds: stats.batting.centuries,
+        fifties: stats.batting.fifties,
+        totalWickets: stats.bowling.totalWickets,
+        bowlingAverage: stats.bowling.average,
+        economyRate: stats.bowling.economyRate,
+        fiveWicketHauls: stats.bowling.fiveWickets,
+        catches: stats.fielding.catches,
+        stumpings: stats.fielding.stumpings,
+        matchesPlayed: stats.general.matchesPlayed
+    };
+  };
+
+  const handleStatsSave = async (newStats: PlayerStats) => {
     if (statsPlayerId) {
-      updateStats(statsPlayerId, newStats);
-      setShowStatsModal(false);
-      setStatsPlayerId(null);
+      try {
+        const flatStats = flattenPlayerStats(newStats);
+        const res = await api.put(`/coach/players/${statsPlayerId}/performance`, flatStats);
+        
+        // Update local players state
+        setPlayers(prev => prev.map(p => {
+          if (p.id === statsPlayerId) {
+            return { ...p, performance: res.data.performance };
+          }
+          return p;
+        }));
+        
+        alert("Player statistics updated successfully!");
+        setShowStatsModal(false);
+        setStatsPlayerId(null);
+      } catch (err) {
+        console.error("Failed to update stats", err);
+        alert("Failed to update player statistics");
+      }
     }
   };
 
@@ -154,7 +204,7 @@ export default function CoachDashboard() {
           </div>
           <div className="space-y-4">
             {activeTab === 'overview' && players.map((player) => {
-              const stats = getStats(player.id);
+              const stats = mapPlayerStats(player.performance);
               return (
                 <div
                   key={player.id}
@@ -277,7 +327,7 @@ export default function CoachDashboard() {
                   className="w-full mb-6 bg-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center justify-center"
                 >
                   <Edit className="w-4 h-4 mr-2" />
-                  Update Player Statistics
+                  Add Match Performance
                 </button>
 
                 <form onSubmit={handleSendFeedback}>
@@ -440,18 +490,21 @@ export default function CoachDashboard() {
         </div>
       </div>
 
-      {/* Stats Modal */}
+      {/* Match Performance Modal */}
       {showStatsModal && statsPlayerId && (
-        <PlayerStatsModal
-          isOpen={showStatsModal}
+        <CoachMatchPerformanceModal
+          playerId={statsPlayerId}
+          playerName={players.find(p => p.id === statsPlayerId)?.name || 'Unknown Player'}
           onClose={() => {
             setShowStatsModal(false);
             setStatsPlayerId(null);
           }}
-          playerId={statsPlayerId}
-          playerName={players.find(p => p.id === statsPlayerId)?.name || 'Unknown Player'}
-          currentStats={getStats(statsPlayerId)}
-          onSave={handleStatsSave}
+          onUpdate={() => {
+            setShowStatsModal(false);
+            setStatsPlayerId(null);
+            // Refresh players from the API to get new recalculated stats
+            api.get('/coach/players').then(res => setPlayers(res.data)).catch(console.error);
+          }}
         />
       )}
     </div>

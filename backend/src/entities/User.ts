@@ -87,7 +87,7 @@ export class User {
     bookings!: Booking[];
 
     @OneToOne(() => PlayerPerformance, (performance) => performance.user)
-    performance!: any;
+    performance!: PlayerPerformance;
 
     @OneToOne(() => PlayerProfile, (profile) => profile.user, { cascade: true })
     playerProfile!: PlayerProfile;

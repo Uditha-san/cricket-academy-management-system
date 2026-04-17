@@ -5,6 +5,8 @@ import { Feedback } from "../entities/Feedback";
 import { Message } from "../entities/Message";
 import { Booking } from "../entities/Booking";
 import { Rental } from "../entities/Rental";
+import { AdminPlayerController } from "./AdminPlayerController";
+import { MatchPerformance } from "../entities/MatchPerformance";
 
 export class CoachController {
     // 1. Get all players for coach to select and view
@@ -13,7 +15,7 @@ export class CoachController {
             const userRepository = AppDataSource.getRepository(User);
             const players = await userRepository.find({
                 where: { role: UserRole.PLAYER },
-                select: ["id", "name", "email", "phone", "avatar"]
+                relations: ["performance"]
             });
             res.json(players);
         } catch (error) {
@@ -196,6 +198,88 @@ export class CoachController {
             res.json(result);
         } catch (error) {
             console.error("Get assigned rentals error:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+    // 7. Update Player Performance (for Statistics update modal)
+    static async updatePlayerPerformance(req: Request, res: Response): Promise<void> {
+        const { id } = req.params; // Player user ID
+        const stats = req.body;
+
+        try {
+            const userRepository = AppDataSource.getRepository(User);
+            // Dynamic import of PlayerPerformance to avoid circular deps or messy top imports if not existed
+            const { PlayerPerformance } = require("../entities/PlayerPerformance");
+            const performanceRepository = AppDataSource.getRepository(PlayerPerformance);
+
+            const player = await userRepository.findOneBy({ id: String(id), role: UserRole.PLAYER });
+            if (!player) {
+                res.status(404).json({ message: "Player not found" });
+                return;
+            }
+
+            let performance = await performanceRepository.findOne({ where: { user: { id: player.id } } });
+
+            if (!performance) {
+                const newPerformance = new PlayerPerformance();
+                newPerformance.user = player;
+                performanceRepository.merge(newPerformance, stats);
+                await performanceRepository.save(newPerformance);
+
+                res.json({ message: "Player performance updated successfully", performance: newPerformance });
+                return;
+            }
+
+            // Update existing performance record
+            performanceRepository.merge(performance, stats);
+            await performanceRepository.save(performance);
+
+            res.json({ message: "Player performance updated successfully", performance });
+        } catch (error) {
+            console.error("Update player performance error:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+
+    // 8. Add Match Performance (calculates everything automatically)
+    static async addMatchPerformance(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        const { matchDate, opponent, runsScored, ballsFaced, fours, sixes, isDismissed, ballsBowled, maidens, runsConceded, wicketsTaken, catches, stumpings } = req.body;
+
+        try {
+            const userRepository = AppDataSource.getRepository(User);
+            const player = await userRepository.findOneBy({ id: String(id), role: UserRole.PLAYER });
+
+            if (!player) {
+                res.status(404).json({ message: "Player not found" });
+                return;
+            }
+
+            const matchPerfRepo = AppDataSource.getRepository(MatchPerformance);
+            const match = new MatchPerformance();
+            match.user = player;
+            match.matchDate = matchDate;
+            match.opponent = opponent;
+            match.runsScored = Number(runsScored) || 0;
+            match.ballsFaced = Number(ballsFaced) || 0;
+            match.fours = Number(fours) || 0;
+            match.sixes = Number(sixes) || 0;
+            match.isDismissed = isDismissed !== undefined ? Boolean(isDismissed) : true;
+            match.ballsBowled = Number(ballsBowled) || 0;
+            match.maidens = Number(maidens) || 0;
+            match.runsConceded = Number(runsConceded) || 0;
+            match.wicketsTaken = Number(wicketsTaken) || 0;
+            match.catches = Number(catches) || 0;
+            match.stumpings = Number(stumpings) || 0;
+
+            await matchPerfRepo.save(match);
+
+            // Recalculate using the existing logic in AdminPlayerController
+            await AdminPlayerController.recalculatePlayerPerformance(player.id);
+
+            res.status(201).json({ message: "Match performance added successfully", match });
+        } catch (error) {
+            console.error("Add match performance error:", error);
             res.status(500).json({ message: "Internal server error" });
         }
     }

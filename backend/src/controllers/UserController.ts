@@ -14,7 +14,6 @@ export class UserController {
         try {
             const user = await AppDataSource.getRepository(User).findOne({
                 where: { id: userId },
-                select: ["id", "name", "email", "phone", "role", "joinDate"],
                 relations: ["performance", "playerProfile", "coachProfile", "adminProfile", "matchPerformances"]
             });
 

@@ -11,9 +11,7 @@ export class AdminPlayerController {
             // Fetch users with role PLAYER and include their performance stats
             const players = await userRepository.find({
                 where: { role: UserRole.PLAYER },
-                relations: ["performance", "playerProfile"],
-                // Exclude sensitive Info like tokens
-                select: ["id", "name", "email", "phone", "role", "status", "joinDate"]
+                relations: ["performance", "playerProfile"]
             });
             res.json(players);
         } catch (error) {

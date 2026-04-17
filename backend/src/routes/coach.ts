@@ -25,5 +25,9 @@ router.get("/bookings", authMiddleware, coachMiddleware, CoachController.getAssi
 
 // Get coach assigned machine rentals
 router.get("/rentals", authMiddleware, coachMiddleware, CoachController.getAssignedRentals);
+// Update player performance status
+router.put("/players/:id/performance", authMiddleware, coachMiddleware, CoachController.updatePlayerPerformance);
+// Add match performance by Coach
+router.post("/players/:id/matches", authMiddleware, coachMiddleware, CoachController.addMatchPerformance);
 
 export default router;
