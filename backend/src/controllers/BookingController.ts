@@ -53,16 +53,14 @@ export class BookingController {
         }
 
         try {
-            const bookingRepository = AppDataSource.getRepository(Booking);
-
-            const bookings = await bookingRepository.find({
+            const bookings = await AppDataSource.getRepository(Booking).find({
                 where: {
                     facility: { id: String(facilityId) },
                     bookingDate: new Date(String(date)),
-                }
+                },
+                select: ["id", "startTime", "status"]
             });
 
-            // Consider confirmed and pending bookings as 'booked' times
             const bookedTimes = bookings
                 .filter(b => b.status !== BookingStatus.CANCELLED)
                 .map(b => b.startTime);
@@ -79,42 +77,31 @@ export class BookingController {
         const { facilityId, bookingDate, startTime, duration, amount, coachId } = req.body;
 
         try {
-            const bookingRepository = AppDataSource.getRepository(Booking);
-            const userRepository = AppDataSource.getRepository(User);
-            const facilityRepository = AppDataSource.getRepository(Facility);
-
-            const user = await userRepository.findOneBy({ id: userId });
-            if (!user) {
-                res.status(404).json({ message: "User not found" });
-                return;
-            }
-
-            // Validate bookingDate
+            // Validate bookingDate early before hitting DB
             const parsedDate = new Date(bookingDate);
             if (!bookingDate || isNaN(parsedDate.getTime())) {
                 res.status(400).json({ message: "Invalid booking date. Please select a valid date (YYYY-MM-DD)." });
                 return;
             }
 
-            const facility = await facilityRepository.findOneBy({ id: facilityId });
-            if (!facility) {
-                res.status(404).json({ message: "Facility not found" });
-                return;
-            }
+            const userRepository = AppDataSource.getRepository(User);
+            const facilityRepository = AppDataSource.getRepository(Facility);
 
-            let coach = null;
-            if (coachId) {
-                coach = await userRepository.findOneBy({ id: coachId, role: UserRole.COACH });
-                if (!coach) {
-                    res.status(404).json({ message: "Coach not found" });
-                    return;
-                }
-            }
+            // Fetch user, facility, and coach IN PARALLEL instead of sequentially
+            const [user, facility, coach] = await Promise.all([
+                userRepository.findOneBy({ id: userId }),
+                facilityRepository.findOneBy({ id: facilityId }),
+                coachId ? userRepository.findOneBy({ id: coachId, role: UserRole.COACH }) : Promise.resolve(null)
+            ]);
 
-            const newBooking = bookingRepository.create({
+            if (!user) { res.status(404).json({ message: "User not found" }); return; }
+            if (!facility) { res.status(404).json({ message: "Facility not found" }); return; }
+            if (coachId && !coach) { res.status(404).json({ message: "Coach not found" }); return; }
+
+            const newBooking = AppDataSource.getRepository(Booking).create({
                 user,
                 facility,
-                bookingDate: new Date(bookingDate),
+                bookingDate: parsedDate,
                 startTime,
                 duration: Number(duration),
                 amount: Number(amount),
@@ -122,46 +109,37 @@ export class BookingController {
                 coach: coach || undefined
             });
 
-            await bookingRepository.save(newBooking);
+            await AppDataSource.getRepository(Booking).save(newBooking);
 
-            // --- Send Booking Email Notifications ---
-            try {
-                const emailData: BookingEmailData = {
-                    bookingId: newBooking.id,
-                    playerName: user.name,
-                    playerEmail: user.email,
-                    userRole: user.role,
-                    courtName: facility.name,
-                    date: bookingDate,
-                    startTime,
-                    duration: Number(duration),
-                    amount: Number(amount),
-                    coachName: coach?.name
-                };
-
-                // 1. Email the player
-                await sendBookingConfirmationToPlayer(emailData);
-
-                // 2. Email all admins
-                const admins = await AppDataSource.getRepository(User).find({
-                    where: { role: UserRole.ADMIN },
-                    select: ["email"]
-                });
-                for (const admin of admins) {
-                    await sendBookingNotificationToAdmin(emailData, admin.email);
-                }
-
-                // 3. Email the assigned coach (if any)
-                if (coach) {
-                    await sendBookingNotificationToCoach(emailData, coach.email);
-                }
-            } catch (emailError) {
-                // Log email errors but don't fail the booking
-                console.error("Booking email notification error:", emailError);
-            }
-            // --- End Email Notifications ---
-
+            // Send response immediately, then fire emails in background
             res.status(201).json(newBooking);
+
+            // FIRE-AND-FORGET: all email notifications sent after response
+            const emailData: BookingEmailData = {
+                bookingId: newBooking.id,
+                playerName: user.name,
+                playerEmail: user.email,
+                userRole: user.role,
+                courtName: facility.name,
+                date: bookingDate,
+                startTime,
+                duration: Number(duration),
+                amount: Number(amount),
+                coachName: coach?.name
+            };
+
+            sendBookingConfirmationToPlayer(emailData).catch(e => console.error("Player booking email error:", e));
+
+            // Fetch admins and notify all in parallel
+            AppDataSource.getRepository(User)
+                .find({ where: { role: UserRole.ADMIN }, select: ["email"] })
+                .then(admins => Promise.all(admins.map(a => sendBookingNotificationToAdmin(emailData, a.email))))
+                .catch(e => console.error("Admin booking email error:", e));
+
+            if (coach) {
+                sendBookingNotificationToCoach(emailData, coach.email).catch(e => console.error("Coach booking email error:", e));
+            }
+
         } catch (error) {
             console.error("Create booking error:", error);
             res.status(500).json({ message: "Internal server error" });
@@ -187,53 +165,39 @@ export class BookingController {
             booking.status = status as BookingStatus;
             await bookingRepository.save(booking);
 
-            // --- Send confirmation emails when admin approves ---
+            // Respond immediately
+            res.json(booking);
+
+            // Handle side-effects in background (fire-and-forget)
             if (status === BookingStatus.CONFIRMED) {
-                try {
-                    const emailData: BookingEmailData = {
-                        bookingId: booking.id,
-                        playerName: booking.user.name,
-                        playerEmail: booking.user.email,
-                        userRole: booking.user.role,
-                        courtName: booking.facility.name,
-                        date: new Date(booking.bookingDate).toISOString().split('T')[0],
-                        startTime: booking.startTime,
-                        duration: booking.duration,
-                        amount: parseFloat(booking.amount as any),
-                        coachName: booking.coach?.name
-                    };
-
-                    // 1. Email the player that booking is confirmed
-                    await sendBookingApprovedToPlayer(emailData);
-
-                    // 2. Email the coach their session is confirmed (if assigned)
-                    if (booking.coach) {
-                        await sendBookingApprovedToCoach(emailData, booking.coach.email);
-                    }
-                } catch (emailError) {
-                    console.error("Approval email error:", emailError);
+                const emailData: BookingEmailData = {
+                    bookingId: booking.id,
+                    playerName: booking.user.name,
+                    playerEmail: booking.user.email,
+                    userRole: booking.user.role,
+                    courtName: booking.facility.name,
+                    date: new Date(booking.bookingDate).toISOString().split('T')[0],
+                    startTime: booking.startTime,
+                    duration: booking.duration,
+                    amount: parseFloat(booking.amount as any),
+                    coachName: booking.coach?.name
+                };
+                sendBookingApprovedToPlayer(emailData).catch(e => console.error("Approval email error:", e));
+                if (booking.coach) {
+                    sendBookingApprovedToCoach(emailData, booking.coach.email).catch(e => console.error("Coach approval email error:", e));
                 }
             } else if (status === BookingStatus.CANCELLED) {
-                // Handle automatic refund
-                try {
-                    const paymentRepository = AppDataSource.getRepository(Payment);
-                    const payment = await paymentRepository.findOne({ where: { booking: { id: booking.id } } });
-                    
-                    if (payment && payment.status === PaymentStatus.COMPLETED) {
-                        payment.status = PaymentStatus.REFUNDED;
-                        await paymentRepository.save(payment);
-                        console.log(`Payment ${payment.transactionId} refunded for cancelled booking ${booking.id}`);
-                        
-                        // Note: In a real-world scenario with Stripe, you would call the Stripe API here:
-                        // await stripe.refunds.create({ charge: payment.transactionId });
-                    }
-                } catch (refundError) {
-                    console.error("Refund processing error:", refundError);
-                }
+                AppDataSource.getRepository(Payment)
+                    .findOne({ where: { booking: { id: booking.id } } })
+                    .then(async payment => {
+                        if (payment && payment.status === PaymentStatus.COMPLETED) {
+                            payment.status = PaymentStatus.REFUNDED;
+                            await AppDataSource.getRepository(Payment).save(payment);
+                            console.log(`Payment ${payment.transactionId} refunded for cancelled booking ${booking.id}`);
+                        }
+                    })
+                    .catch(e => console.error("Refund processing error:", e));
             }
-            // --- End confirmation emails ---
-
-            res.json(booking);
         } catch (error) {
             console.error("Update booking status error:", error);
             res.status(500).json({ message: "Internal server error" });

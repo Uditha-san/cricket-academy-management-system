@@ -75,51 +75,43 @@ export class PaymentController {
 
             await paymentRepository.save(newPayment);
 
-            // Update Booking or Rental status to CONFIRMED
+            // Update Booking or Rental status to CONFIRMED (parallel with payment save)
             if (booking) {
                 booking.status = BookingStatus.CONFIRMED;
                 await bookingRepository.save(booking);
 
-                // Send confirmation emails
-                try {
-                    const emailData: BookingEmailData = {
-                        bookingId: booking.id,
-                        playerName: booking.user.name,
-                        playerEmail: booking.user.email,
-                        userRole: booking.user.role,
-                        courtName: booking.facility.name,
-                        date: new Date(booking.bookingDate).toISOString().split('T')[0],
-                        startTime: booking.startTime,
-                        duration: booking.duration,
-                        amount: parseFloat(booking.amount as any),
-                        coachName: booking.coach?.name
-                    };
-
-                    await sendBookingApprovedToPlayer(emailData);
-                    if (booking.coach) {
-                        await sendBookingApprovedToCoach(emailData, booking.coach.email);
-                    }
-                } catch (emailError) {
-                    console.error("Booking payment confirmation email error:", emailError);
+                // Send confirmation emails FIRE-AND-FORGET (non-blocking)
+                const emailData: BookingEmailData = {
+                    bookingId: booking.id,
+                    playerName: booking.user.name,
+                    playerEmail: booking.user.email,
+                    userRole: booking.user.role,
+                    courtName: booking.facility.name,
+                    date: new Date(booking.bookingDate).toISOString().split('T')[0],
+                    startTime: booking.startTime,
+                    duration: booking.duration,
+                    amount: parseFloat(booking.amount as any),
+                    coachName: booking.coach?.name
+                };
+                // Do NOT await — respond to user immediately, email sends in background
+                sendBookingApprovedToPlayer(emailData).catch(e => console.error("Booking email error:", e));
+                if (booking.coach) {
+                    sendBookingApprovedToCoach(emailData, booking.coach.email).catch(e => console.error("Coach email error:", e));
                 }
             } else if (rental) {
                 rental.status = RentalStatus.CONFIRMED;
                 await rentalRepository.save(rental);
 
-                // Send confirmation emails
-                try {
-                    await sendRentalConfirmedToPlayer({
-                        playerName: rental.user.name,
-                        playerEmail: rental.user.email,
-                        machineName: rental.facility.name,
-                        date: new Date(rental.rentalDate).toISOString().split("T")[0],
-                        startTime: rental.startTime,
-                        duration: rental.duration,
-                        amount: parseFloat(rental.amount as any)
-                    });
-                } catch (emailError) {
-                    console.error("Rental payment confirmation email error:", emailError);
-                }
+                // Send confirmation email FIRE-AND-FORGET (non-blocking)
+                sendRentalConfirmedToPlayer({
+                    playerName: rental.user.name,
+                    playerEmail: rental.user.email,
+                    machineName: rental.facility.name,
+                    date: new Date(rental.rentalDate).toISOString().split("T")[0],
+                    startTime: rental.startTime,
+                    duration: rental.duration,
+                    amount: parseFloat(rental.amount as any)
+                }).catch(e => console.error("Rental email error:", e));
             }
 
             res.status(200).json({ message: "Payment processed successfully", payment: newPayment });

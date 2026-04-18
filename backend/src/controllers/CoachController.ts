@@ -40,8 +40,11 @@ export class CoachController {
             const userRepository = AppDataSource.getRepository(User);
             const feedbackRepository = AppDataSource.getRepository(Feedback);
 
-            const coach = await userRepository.findOneBy({ id: coachId });
-            const player = await userRepository.findOneBy({ id: String(playerId), role: UserRole.PLAYER });
+            // Fetch coach and player IN PARALLEL
+            const [coach, player] = await Promise.all([
+                userRepository.findOneBy({ id: coachId }),
+                userRepository.findOneBy({ id: String(playerId), role: UserRole.PLAYER })
+            ]);
 
             if (!coach || !player) {
                 res.status(404).json({ message: "Coach or Player not found" });

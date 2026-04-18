@@ -15,4 +15,12 @@ export const AppDataSource = new DataSource({
     entities: ["src/entities/**/*.ts"],
     subscribers: [],
     migrations: [],
+    // Connection pool: allows parallel queries to run concurrently
+    poolSize: 10,
+    connectTimeout: 10000,
+    extra: {
+        connectionLimit: 10,
+        waitForConnections: true,
+        queueLimit: 0,
+    }
 });

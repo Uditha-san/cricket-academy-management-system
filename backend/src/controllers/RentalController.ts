@@ -97,16 +97,15 @@ export class RentalController {
             const facilityRepo = AppDataSource.getRepository(Facility);
             const rentalRepo = AppDataSource.getRepository(Rental);
 
-            const user = await userRepo.findOneBy({ id: userId });
+            // Fetch user, facility, and coach IN PARALLEL
+            const [user, facility, coach] = await Promise.all([
+                userRepo.findOneBy({ id: userId }),
+                facilityRepo.findOneBy({ id: facilityId }),
+                coachId ? userRepo.findOneBy({ id: coachId }) : Promise.resolve(null)
+            ]);
+
             if (!user) { res.status(404).json({ message: "User not found" }); return; }
-
-            const facility = await facilityRepo.findOneBy({ id: facilityId });
             if (!facility) { res.status(404).json({ message: "Machine not found" }); return; }
-
-            let coach = null;
-            if (coachId) {
-                coach = await userRepo.findOneBy({ id: coachId });
-            }
 
             const rental = rentalRepo.create({
                 user,
@@ -121,28 +120,23 @@ export class RentalController {
 
             await rentalRepo.save(rental);
 
-            // Email notifications
-            try {
-                const emailData = {
-                    playerName: user.name,
-                    playerEmail: user.email,
-                    machineName: facility.name,
-                    date: rentalDate,
-                    startTime,
-                    duration: Number(duration),
-                    amount: Number(amount)
-                };
-
-                // Email admins
-                const admins = await userRepo.find({ where: { role: UserRole.ADMIN }, select: ["email"] });
-                for (const admin of admins) {
-                    await sendRentalNotificationToAdmin(emailData, admin.email);
-                }
-            } catch (emailErr) {
-                console.error("Rental email error:", emailErr);
-            }
-
+            // Respond to client immediately
             res.status(201).json(rental);
+
+            // FIRE-AND-FORGET: notify admins in parallel after response
+            const emailData = {
+                playerName: user.name,
+                playerEmail: user.email,
+                machineName: facility.name,
+                date: rentalDate,
+                startTime,
+                duration: Number(duration),
+                amount: Number(amount)
+            };
+            userRepo.find({ where: { role: UserRole.ADMIN }, select: ["email"] })
+                .then(admins => Promise.all(admins.map(a => sendRentalNotificationToAdmin(emailData, a.email))))
+                .catch(e => console.error("Rental admin email error:", e));
+
         } catch (error) {
             console.error("Create rental error:", error);
             res.status(500).json({ message: "Internal server error" });
@@ -165,41 +159,32 @@ export class RentalController {
             rental.status = status as RentalStatus;
             await rentalRepo.save(rental);
 
-            // Send confirmed email to player
-            if (status === RentalStatus.CONFIRMED) {
-                try {
-                    await sendRentalConfirmedToPlayer({
-                        playerName: rental.user.name,
-                        playerEmail: rental.user.email,
-                        machineName: rental.facility.name,
-                        date: new Date(rental.rentalDate).toISOString().split("T")[0],
-                        startTime: rental.startTime,
-                        duration: rental.duration,
-                        amount: parseFloat(rental.amount as any)
-                    });
-                } catch (emailErr) {
-                    console.error("Rental confirm email error:", emailErr);
-                }
-            } else if (status === RentalStatus.CANCELLED) {
-                // Handle automatic refund
-                try {
-                    const paymentRepository = AppDataSource.getRepository(Payment);
-                    const payment = await paymentRepository.findOne({ where: { rental: { id: rental.id } } });
-                    
-                    if (payment && payment.status === PaymentStatus.COMPLETED) {
-                        payment.status = PaymentStatus.REFUNDED;
-                        await paymentRepository.save(payment);
-                        console.log(`Payment ${payment.transactionId} refunded for cancelled rental ${rental.id}`);
-                        
-                        // Note: In a real-world scenario with Stripe, you would call the Stripe API here:
-                        // await stripe.refunds.create({ charge: payment.transactionId });
-                    }
-                } catch (refundError) {
-                    console.error("Refund processing error:", refundError);
-                }
-            }
-
+            // Respond immediately
             res.json(rental);
+
+            // FIRE-AND-FORGET: handle side-effects in background
+            if (status === RentalStatus.CONFIRMED) {
+                sendRentalConfirmedToPlayer({
+                    playerName: rental.user.name,
+                    playerEmail: rental.user.email,
+                    machineName: rental.facility.name,
+                    date: new Date(rental.rentalDate).toISOString().split("T")[0],
+                    startTime: rental.startTime,
+                    duration: rental.duration,
+                    amount: parseFloat(rental.amount as any)
+                }).catch(e => console.error("Rental confirm email error:", e));
+            } else if (status === RentalStatus.CANCELLED) {
+                AppDataSource.getRepository(Payment)
+                    .findOne({ where: { rental: { id: rental.id } } })
+                    .then(async payment => {
+                        if (payment && payment.status === PaymentStatus.COMPLETED) {
+                            payment.status = PaymentStatus.REFUNDED;
+                            await AppDataSource.getRepository(Payment).save(payment);
+                            console.log(`Payment ${payment.transactionId} refunded for cancelled rental ${rental.id}`);
+                        }
+                    })
+                    .catch(e => console.error("Refund processing error:", e));
+            }
         } catch (error) {
             console.error("Update rental status error:", error);
             res.status(500).json({ message: "Internal server error" });

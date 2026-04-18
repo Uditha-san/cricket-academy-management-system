@@ -129,30 +129,33 @@ export class UserController {
             const { date, time } = req.query;
 
             const userRepository = AppDataSource.getRepository(User);
-            const coaches = await userRepository.find({
-                where: { role: UserRole.COACH },
-                select: ["id", "name", "email", "avatar"]
-            });
 
             if (!date || !time) {
+                const coaches = await userRepository.find({
+                    where: { role: UserRole.COACH },
+                    select: ["id", "name", "email", "avatar"]
+                });
                 res.json(coaches);
                 return;
             }
 
-            const bookingRepository = AppDataSource.getRepository(Booking);
-            const bookingsWithCoaches = await bookingRepository.find({
-                where: {
-                    bookingDate: new Date(String(date)),
-                    startTime: String(time)
-                },
-                relations: ["coach"]
-            });
+            // Fetch coaches and bookings IN PARALLEL when filtering
+            const [coaches, bookingsWithCoaches] = await Promise.all([
+                userRepository.find({ where: { role: UserRole.COACH }, select: ["id", "name", "email", "avatar"] }),
+                AppDataSource.getRepository(Booking).find({
+                    where: { bookingDate: new Date(String(date)), startTime: String(time) },
+                    relations: ["coach"],
+                    select: ["id", "status"]
+                })
+            ]);
 
-            const busyCoachIds = bookingsWithCoaches
-                .filter(b => b.coach && b.status !== BookingStatus.CANCELLED)
-                .map(b => b.coach!.id);
+            const busyCoachIds = new Set(
+                bookingsWithCoaches
+                    .filter(b => b.coach && b.status !== BookingStatus.CANCELLED)
+                    .map(b => b.coach!.id)
+            );
 
-            const availableCoaches = coaches.filter(c => !busyCoachIds.includes(c.id));
+            const availableCoaches = coaches.filter(c => !busyCoachIds.has(c.id));
             res.json(availableCoaches);
         } catch (error) {
             console.error("Get coaches error:", error);
@@ -174,8 +177,11 @@ export class UserController {
             const userRepository = AppDataSource.getRepository(User);
             const messageRepository = AppDataSource.getRepository(Message);
 
-            const sender = await userRepository.findOneBy({ id: userId });
-            const receiver = await userRepository.findOneBy({ id: coachId, role: UserRole.COACH });
+            // Fetch sender and receiver IN PARALLEL
+            const [sender, receiver] = await Promise.all([
+                userRepository.findOneBy({ id: userId }),
+                userRepository.findOneBy({ id: coachId, role: UserRole.COACH })
+            ]);
 
             if (!sender || !receiver) {
                 res.status(404).json({ message: "Sender or receiver coach not found" });

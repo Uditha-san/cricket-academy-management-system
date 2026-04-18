@@ -20,10 +20,15 @@ export class OrderController {
                 return res.status(400).json({ message: "Missing required fields." });
             }
 
+            // Fetch all products in ONE query instead of N separate queries
+            const productIds = items.map((i: any) => i.productId);
+            const products = await equipmentRepo().findByIds(productIds);
+            const productMap = new Map(products.map((p: any) => [p.id, p]));
+
             // Verify stock and calculate total
             let total = 0;
             for (const item of items) {
-                const product = await equipmentRepo().findOneBy({ id: item.productId });
+                const product = productMap.get(item.productId);
                 if (!product) {
                     return res.status(404).json({ message: `Product ${item.productName} not found.` });
                 }
@@ -44,23 +49,22 @@ export class OrderController {
 
             const savedOrder = await orderRepo().save(order);
 
-            // Save items and update stock
-            const orderItems = [];
-            for (const i of items) {
-                const orderItem = orderItemRepo().create({
+            // Build order items and decrement stock IN PARALLEL
+            const orderItems = items.map((i: any) =>
+                orderItemRepo().create({
                     order: savedOrder,
                     productId: i.productId,
                     productName: i.productName,
                     productImage: i.productImage || "",
                     quantity: i.quantity,
                     unitPrice: i.unitPrice,
-                });
-                orderItems.push(orderItem);
+                })
+            );
 
-                // Update stock
-                await equipmentRepo().decrement({ id: i.productId }, "stock", i.quantity);
-            }
-            await orderItemRepo().save(orderItems);
+            await Promise.all([
+                orderItemRepo().save(orderItems),
+                ...items.map((i: any) => equipmentRepo().decrement({ id: i.productId }, "stock", i.quantity))
+            ]);
 
             // Return the order with items
             const fullOrder = await orderRepo().findOne({
