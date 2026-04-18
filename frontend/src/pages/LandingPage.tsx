@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Trophy, Users, Calendar, BarChart3, ShoppingBag, Target, Award, Clock, MapPin, Phone, Mail, ArrowRight, Star, UserCheck } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { Trophy, Users, Calendar, BarChart3, ShoppingBag, Target, Award, Clock, MapPin, Phone, Mail, ArrowRight, Star, UserCheck, LayoutDashboard } from 'lucide-react';
 
 export default function LandingPage() {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [reviews, setReviews] = useState<{ guestName: string; rating: number; comment: string }[]>([]);
 
     useEffect(() => {
@@ -196,18 +198,30 @@ export default function LandingPage() {
                             </span>
                         </div>
                         <div className="flex items-center space-x-4">
-                            <button
-                                onClick={() => navigate('/login')}
-                                className="px-4 py-2 text-green-700 font-medium hover:text-green-800 transition-all hover:scale-105"
-                            >
-                                Login
-                            </button>
-                            <button
-                                onClick={() => navigate('/register')}
-                                className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-110"
-                            >
-                                Get Started
-                            </button>
+                            {user ? (
+                                <button
+                                    onClick={() => navigate('/dashboard')}
+                                    className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-110 flex items-center gap-2"
+                                >
+                                    <LayoutDashboard className="w-4 h-4" />
+                                    Go to Dashboard
+                                </button>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => navigate('/login')}
+                                        className="px-4 py-2 text-green-700 font-medium hover:text-green-800 transition-all hover:scale-105"
+                                    >
+                                        Login
+                                    </button>
+                                    <button
+                                        onClick={() => navigate('/register')}
+                                        className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-110"
+                                    >
+                                        Get Started
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -235,26 +249,38 @@ export default function LandingPage() {
                                 and cutting-edge performance tracking. Join Sri Lanka's premier cricket academy.
                             </p>
                             <div className="flex flex-wrap gap-4 initial-hidden animate-fade-in-up delay-300">
-                                <button
-                                    onClick={() => navigate('/register')}
-                                    className="group px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-xl hover:shadow-2xl transform hover:scale-110 flex items-center space-x-2"
-                                >
-                                    <span>Start Your Journey</span>
-                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-                                </button>
-                                <button
-                                    onClick={() => navigate('/login')}
-                                    className="px-8 py-4 bg-white text-green-700 border-2 border-green-600 rounded-xl font-semibold hover:bg-green-50 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                                >
-                                    Sign In
-                                </button>
-                                <button
-                                    onClick={() => navigate('/login?guest=1')}
-                                    className="px-8 py-4 bg-white/80 text-gray-700 border-2 border-gray-300 rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-md hover:shadow-lg transform hover:scale-105 flex items-center gap-2"
-                                >
-                                    <UserCheck className="w-5 h-5 text-orange-500" />
-                                    Continue as Guest
-                                </button>
+                                {user ? (
+                                    <button
+                                        onClick={() => navigate('/dashboard')}
+                                        className="group px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-xl hover:shadow-2xl transform hover:scale-110 flex items-center space-x-2"
+                                    >
+                                        <LayoutDashboard className="w-5 h-5" />
+                                        <span>Go to Dashboard</span>
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={() => navigate('/register')}
+                                            className="group px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-xl hover:shadow-2xl transform hover:scale-110 flex items-center space-x-2"
+                                        >
+                                            <span>Start Your Journey</span>
+                                            <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+                                        </button>
+                                        <button
+                                            onClick={() => navigate('/login')}
+                                            className="px-8 py-4 bg-white text-green-700 border-2 border-green-600 rounded-xl font-semibold hover:bg-green-50 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                                        >
+                                            Sign In
+                                        </button>
+                                        <button
+                                            onClick={() => navigate('/login?guest=1')}
+                                            className="px-8 py-4 bg-white/80 text-gray-700 border-2 border-gray-300 rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-md hover:shadow-lg transform hover:scale-105 flex items-center gap-2"
+                                        >
+                                            <UserCheck className="w-5 h-5 text-orange-500" />
+                                            Continue as Guest
+                                        </button>
+                                    </>
+                                )}
                             </div>
                             {/* Quick Stats */}
                             <div className="grid grid-cols-3 gap-6 pt-8 initial-hidden animate-fade-in-up delay-400">

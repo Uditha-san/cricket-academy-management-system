@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { StatsProvider } from './contexts/StatsContext';
 import { DataProvider } from './contexts/DataContext';
@@ -28,10 +28,13 @@ import LandingPage from './pages/LandingPage';
 
 function Dashboard() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState('dashboard');
 
-  // Note: user is null here if not logged in, but MainApp handles that logic usually.
-  // However, we need to handle the case where we are at / but not logged in.
+  // Reset to dashboard whenever the logged-in user changes (login/logout/switch)
+  useEffect(() => {
+    setCurrentPage('dashboard');
+  }, [user?.id]);
 
   if (!user) return <Navigate to="/login" replace />;
 
@@ -103,13 +106,18 @@ function Dashboard() {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/', { replace: true });
+  };
+
   const showMobileNav = user.role === 'player';
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header
         user={user}
-        onLogout={logout}
+        onLogout={handleLogout}
         currentPage={currentPage}
         onNavigate={setCurrentPage}
       />
@@ -129,8 +137,8 @@ function Dashboard() {
 function AuthScreens() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const location = window.location.pathname;
-  const showRegistration = location === '/register';
+  const location = useLocation();
+  const showRegistration = location.pathname === '/register';
 
   if (user) {
     return <Navigate to="/dashboard" replace />;
