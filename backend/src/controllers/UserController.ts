@@ -59,6 +59,12 @@ export class UserController {
                 if (emergencyContact) user.playerProfile.emergencyContact = emergencyContact;
             }
 
+            if (user.coachProfile) {
+                const { specialization, experienceYears } = req.body;
+                if (specialization) user.coachProfile.specialization = specialization;
+                if (experienceYears !== undefined) user.coachProfile.experienceYears = parseInt(experienceYears);
+            }
+
             await userRepository.save(user);
 
             res.json({ message: "Profile updated successfully", user });
@@ -133,7 +139,18 @@ export class UserController {
             if (!date || !time) {
                 const coaches = await userRepository.find({
                     where: { role: UserRole.COACH },
-                    select: ["id", "name", "email", "avatar"]
+                    relations: ["coachProfile"],
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        avatar: true,
+                        coachProfile: {
+                            specialization: true,
+                            experienceYears: true
+                        }
+                    }
                 });
                 res.json(coaches);
                 return;
@@ -141,7 +158,21 @@ export class UserController {
 
             // Fetch coaches and bookings IN PARALLEL when filtering
             const [coaches, bookingsWithCoaches] = await Promise.all([
-                userRepository.find({ where: { role: UserRole.COACH }, select: ["id", "name", "email", "avatar"] }),
+                userRepository.find({
+                    where: { role: UserRole.COACH },
+                    relations: ["coachProfile"],
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        avatar: true,
+                        coachProfile: {
+                            specialization: true,
+                            experienceYears: true
+                        }
+                    }
+                }),
                 AppDataSource.getRepository(Booking).find({
                     where: { bookingDate: new Date(String(date)), startTime: String(time) },
                     relations: ["coach"],

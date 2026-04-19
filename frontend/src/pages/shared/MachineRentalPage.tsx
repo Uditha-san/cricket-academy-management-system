@@ -342,13 +342,28 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
                     <button
                       key={coach.id}
                       onClick={() => setSelectedCoach(coach.id)}
-                      className={`p-4 border-2 rounded-xl text-left transition-colors ${selectedCoach === coach.id ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-200'}`}
+                      className={`flex flex-col p-4 border-2 rounded-xl text-left transition-all ${selectedCoach === coach.id ? 'border-purple-600 bg-purple-50 shadow-md ring-2 ring-purple-500' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50'}`}
                     >
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-700 font-bold text-lg mb-2">
-                        {coach.name.charAt(0)}
+                      <div className="flex items-center mb-3">
+                        <div className={`w-12 h-12 rounded-full mr-3 flex items-center justify-center font-bold text-lg ${selectedCoach === coach.id ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700'}`}>
+                          {coach.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className={`font-bold text-lg ${selectedCoach === coach.id ? 'text-purple-900' : 'text-gray-900'}`}>{coach.name}</p>
+                          <p className={`text-xs ${selectedCoach === coach.id ? 'text-purple-700' : 'text-gray-500'}`}>{coach.coachProfile?.specialization || 'General Coach'} Specialist</p>
+                        </div>
                       </div>
-                      <p className="font-semibold text-gray-900">{coach.name}</p>
-                      <p className="text-xs text-gray-500">{coach.specialization || 'Cricket Coach'}</p>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className={`px-2 py-1 rounded-md ${selectedCoach === coach.id ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-600'}`}>
+                          <p className="font-semibold">{coach.coachProfile?.experienceYears || '0'}+ Years</p>
+                          <p className="opacity-70">Experience</p>
+                        </div>
+                        <div className={`px-2 py-1 rounded-md ${selectedCoach === coach.id ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-600'}`}>
+                          <p className="font-semibold">{coach.phone || 'N/A'}</p>
+                          <p className="opacity-70">Contact</p>
+                        </div>
+                      </div>
                     </button>
                   ))}
                 </div>

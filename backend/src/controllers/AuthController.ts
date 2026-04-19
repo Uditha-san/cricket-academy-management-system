@@ -57,7 +57,7 @@ const getEmailTemplate = (title: string, content: string) => `
 
 export class AuthController {
     static async register(req: Request, res: Response): Promise<void> {
-        const { name, email, password, phone, role, adminCode, dateOfBirth, battingStyle, bowlingStyle, preferredPosition, address, emergencyContact } = req.body;
+        const { name, email, password, phone, role, adminCode, dateOfBirth, battingStyle, bowlingStyle, preferredPosition, address, emergencyContact, specialization, experienceYears } = req.body;
 
         try {
             // Input validation
@@ -121,6 +121,12 @@ export class AuthController {
                 if (!emergencyContact) validationErrors.push('Emergency contact is required for players');
             }
 
+            // Validate coach required fields
+            if (role === UserRole.COACH) {
+                if (!specialization) validationErrors.push('Specialization is required for coaches');
+                if (experienceYears === undefined || experienceYears === null) validationErrors.push('Experience years are required for coaches');
+            }
+
             // Return validation errors if any
             if (validationErrors.length > 0) {
                 res.status(400).json({
@@ -173,6 +179,8 @@ export class AuthController {
                 if (emergencyContact) user.playerProfile.emergencyContact = emergencyContact;
             } else if (user.role === UserRole.COACH) {
                 user.coachProfile = new CoachProfile();
+                if (specialization) user.coachProfile.specialization = specialization;
+                if (experienceYears !== undefined) user.coachProfile.experienceYears = parseInt(experienceYears);
             } else if (user.role === UserRole.ADMIN) {
                 user.adminProfile = new AdminProfile();
             }
@@ -215,6 +223,7 @@ export class AuthController {
             res.status(500).json({ message: "Internal server error" });
         }
     }
+
 
     static async verifyEmail(req: Request, res: Response): Promise<void> {
         const { email, otp } = req.body;

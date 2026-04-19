@@ -21,7 +21,9 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
     battingStyle: 'Right-handed',
     bowlingStyle: 'Right-arm Medium',
     address: '',
-    emergencyContact: ''
+    emergencyContact: '',
+    specialization: 'Batting',
+    experienceYears: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -84,6 +86,17 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
       }
     }
 
+    if (formData.role === 'coach') {
+      if (!formData.specialization) {
+        errors.specialization = 'Specialization is required';
+      }
+      if (!formData.experienceYears) {
+        errors.experienceYears = 'Experience years are required';
+      } else if (isNaN(Number(formData.experienceYears)) || Number(formData.experienceYears) < 0) {
+        errors.experienceYears = 'Please enter a valid number';
+      }
+    }
+
     const nameError = validateName(formData.name);
     if (nameError) errors.name = nameError;
 
@@ -104,7 +117,7 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
       errors.adminCode = 'Admin Registration Code is required';
     }
 
-    // If there are any errors, display them
+    // If there any errors, display them
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       setError('Please fix the errors below');
@@ -113,7 +126,22 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
 
     setIsLoading(true);
     try {
-      await register(formData.name, formData.email, formData.password, formData.phone, formData.role, formData.adminCode, formData.dateOfBirth, formData.preferredPosition, formData.battingStyle, formData.bowlingStyle, formData.address, formData.emergencyContact);
+      await register(
+        formData.name,
+        formData.email,
+        formData.password,
+        formData.phone,
+        formData.role,
+        formData.adminCode,
+        formData.dateOfBirth,
+        formData.preferredPosition,
+        formData.battingStyle,
+        formData.bowlingStyle,
+        formData.address,
+        formData.emergencyContact,
+        formData.specialization,
+        formData.experienceYears
+      );
       // Navigate to verification page with email
       navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
     } catch (error: any) {
@@ -390,6 +418,49 @@ export default function RegistrationPage({ onSwitchToLogin }: RegistrationPagePr
                   </div>
                 )}
               </>
+            )}
+
+            {/* Coach Details Section */}
+            {formData.role === 'coach' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Specialization <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="specialization"
+                    value={formData.specialization}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                  >
+                    <option value="Batting">Batting Coach</option>
+                    <option value="Bowling">Bowling Coach</option>
+                    <option value="Fielding">Fielding Coach</option>
+                    <option value="Wicket-keeping">Wicket-keeping Coach</option>
+                    <option value="All-rounder">All-round Specialist</option>
+                    <option value="Fitness">Strength & Conditioning</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Experience (Years) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="experienceYears"
+                    value={formData.experienceYears}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white ${fieldErrors.experienceYears ? 'border-red-500' : 'border-gray-300'}`}
+                    placeholder="E.g. 5"
+                    required={formData.role === 'coach'}
+                    min="0"
+                  />
+                  {fieldErrors.experienceYears && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.experienceYears}</p>
+                  )}
+                </div>
+              </div>
             )}
 
             <div>

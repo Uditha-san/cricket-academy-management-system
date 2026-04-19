@@ -370,16 +370,32 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
                         <button
                           key={coach.id}
                           onClick={() => setSelectedCoach(coach.id)}
-                          className={`flex items-center p-3 border rounded-lg transition-colors ${selectedCoach === coach.id ? 'border-green-500 bg-green-500 text-white' : 'border-gray-200 hover:border-green-300 hover:bg-green-50'}`}
+                          className={`flex flex-col p-4 border rounded-xl transition-all ${selectedCoach === coach.id ? 'border-green-600 bg-green-50 shadow-md ring-2 ring-green-500' : 'border-gray-200 hover:border-green-300 hover:bg-green-50'}`}
                         >
-                          {coach.avatar ? (
-                            <img src={coach.avatar} alt={coach.name} className="w-10 h-10 rounded-full mr-3 object-cover shadow-sm bg-white" />
-                          ) : (
-                            <div className={`w-10 h-10 rounded-full mr-3 flex items-center justify-center font-bold ${selectedCoach === coach.id ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                              <UserIcon className="w-5 h-5" />
+                          <div className="flex items-center mb-3">
+                            {coach.avatar ? (
+                              <img src={coach.avatar} alt={coach.name} className="w-12 h-12 rounded-full mr-3 object-cover shadow-sm bg-white border border-gray-100" />
+                            ) : (
+                              <div className={`w-12 h-12 rounded-full mr-3 flex items-center justify-center font-bold text-lg ${selectedCoach === coach.id ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                <UserIcon className="w-6 h-6" />
+                              </div>
+                            )}
+                            <div className="text-left">
+                              <span className={`block font-bold text-lg ${selectedCoach === coach.id ? 'text-green-900' : 'text-gray-900'}`}>{coach.name}</span>
+                              <span className={`block text-xs ${selectedCoach === coach.id ? 'text-green-700' : 'text-gray-500'}`}>{coach.coachProfile?.specialization || 'General Coach'} Specialist</span>
                             </div>
-                          )}
-                          <span className="font-medium">{coach.name}</span>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2 text-xs text-left">
+                            <div className={`px-2 py-1 rounded-md ${selectedCoach === coach.id ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                              <p className="font-semibold">{coach.coachProfile?.experienceYears || '0'}+ Years</p>
+                              <p className="opacity-70">Experience</p>
+                            </div>
+                            <div className={`px-2 py-1 rounded-md ${selectedCoach === coach.id ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                              <p className="font-semibold">{coach.phone || 'N/A'}</p>
+                              <p className="opacity-70">Contact Num</p>
+                            </div>
+                          </div>
                         </button>
                       ))}
                     </div>
