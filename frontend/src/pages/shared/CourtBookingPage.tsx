@@ -134,8 +134,9 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
       return;
     }
 
+    const taxRate = user?.role === 'guest' ? 0.18 : 0;
     const coachFee = bookingType === 'practice' ? 1000 : 0;
-    const amountPerSlot = Math.round((selectedCourtData.price + coachFee) * 1.18);
+    const amountPerSlot = Math.round((selectedCourtData.price + coachFee) * (1 + taxRate));
 
     try {
       setIsSubmitting(true);
@@ -446,12 +447,12 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Tax (18%)</span>
-                    <span className="font-semibold">Rs.{Math.round((((selectedCourtData?.price || 0) * selectedSlots.length) + (bookingType === 'practice' && selectedCoach ? 1000 * selectedSlots.length : 0)) * 0.18)}</span>
+                    <span className="text-gray-600">Tax ({user?.role === 'guest' ? '18%' : 'Member Discount'})</span>
+                    <span className="font-semibold">Rs.{Math.round((((selectedCourtData?.price || 0) * selectedSlots.length) + (bookingType === 'practice' && selectedCoach ? 1000 * selectedSlots.length : 0)) * (user?.role === 'guest' ? 0.18 : 0))}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t">
                     <span>Total</span>
-                    <span className="text-green-600">Rs.{Math.round((((selectedCourtData?.price || 0) * selectedSlots.length) + (bookingType === 'practice' && selectedCoach ? 1000 * selectedSlots.length : 0)) * 1.18)}</span>
+                    <span className="text-green-600">Rs.{Math.round((((selectedCourtData?.price || 0) * selectedSlots.length) + (bookingType === 'practice' && selectedCoach ? 1000 * selectedSlots.length : 0)) * (user?.role === 'guest' ? 1.18 : 1.0))}</span>
                   </div>
                 </div>
                 <button
@@ -475,7 +476,7 @@ export default function CourtBookingPage({ onNavigate }: CourtBookingPageProps) 
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
-        amount={selectedCourtData && selectedSlots.length > 0 ? Math.round((((selectedCourtData.price || 0) * selectedSlots.length) + (bookingType === 'practice' && selectedCoach ? 1000 * selectedSlots.length : 0)) * 1.18) : 0}
+        amount={selectedCourtData && selectedSlots.length > 0 ? Math.round((((selectedCourtData.price || 0) * selectedSlots.length) + (bookingType === 'practice' && selectedCoach ? 1000 * selectedSlots.length : 0)) * (user?.role === 'guest' ? 1.18 : 1.0)) : 0}
         onPaymentSuccess={handlePaymentSuccess}
         title="Complete Court Booking"
       />

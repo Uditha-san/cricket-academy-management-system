@@ -100,8 +100,9 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
 
   const selectedMachineData = machines.find(m => m.id === selectedMachine);
   const selectedSlotsData = TIME_SLOTS.filter(s => selectedSlots.includes(s.id));
+  const taxRate = user?.role === 'guest' ? 0.18 : 0;
   const coachFee = rentalType === 'coach' ? 1000 : 0;
-  const pricePerSlot = selectedMachineData ? Math.round((selectedMachineData.price + coachFee) * 1.18) : 0;
+  const pricePerSlot = selectedMachineData ? Math.round((selectedMachineData.price + coachFee) * (1 + taxRate)) : 0;
   const total = pricePerSlot * selectedSlotsData.length;
 
   const handleSlotToggle = (id: string) => {
@@ -266,15 +267,28 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
                   <p className="font-semibold text-gray-900">With Friends</p>
                   <p className="text-xs text-gray-500 mt-1">Casual practice, no coach</p>
                 </button>
-                <button
-                  onClick={() => setRentalType('coach')}
-                  className={`p-4 rounded-xl border-2 text-center transition-colors ${rentalType === 'coach' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-green-200'}`}
-                >
-                  <UserIcon className="w-7 h-7 mx-auto mb-2 text-purple-600" />
-                  <p className="font-semibold text-gray-900">With Coach</p>
-                  <p className="text-xs text-gray-500 mt-1">+Rs.1000 coaching fee</p>
-                </button>
+                {user?.role !== 'guest' ? (
+                  <button
+                    onClick={() => setRentalType('coach')}
+                    className={`p-4 rounded-xl border-2 text-center transition-colors ${rentalType === 'coach' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-green-200'}`}
+                  >
+                    <UserIcon className="w-7 h-7 mx-auto mb-2 text-purple-600" />
+                    <p className="font-semibold text-gray-900">With Coach</p>
+                    <p className="text-xs text-gray-500 mt-1">+Rs.1000 coaching fee</p>
+                  </button>
+                ) : (
+                  <div className="p-4 rounded-xl border border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-center opacity-80">
+                    <UserIcon className="w-6 h-6 mb-2 text-gray-400" />
+                    <p className="text-sm font-medium text-gray-700">Practice with Coach</p>
+                    <p className="text-[10px] text-orange-600 mt-1">Members Only</p>
+                  </div>
+                )}
               </div>
+              {user?.role === 'guest' && (
+                <p className="mt-4 text-xs text-orange-600 bg-orange-50 border border-orange-100 rounded-lg p-3">
+                  👤 You are renting as a <strong>Guest</strong>. Practice sessions with academy coaches are reserved for registered members only.
+                </p>
+              )}
             </div>
           )}
 
@@ -411,8 +425,8 @@ export default function MachineRentalPage({ onNavigate }: MachineRentalPageProps
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Tax (18%)</span>
-                    <span>Rs.{Math.round(((selectedMachineData?.price || 0) + (rentalType === 'coach' ? 1000 : 0)) * selectedSlotsData.length * 0.18)}</span>
+                    <span className="text-gray-600">Tax ({user?.role === 'guest' ? '18%' : 'Member Discount'})</span>
+                    <span>Rs.{Math.round(((selectedMachineData?.price || 0) + (rentalType === 'coach' ? 1000 : 0)) * selectedSlotsData.length * (user?.role === 'guest' ? 0.18 : 0))}</span>
                   </div>
                   <div className="flex justify-between font-bold text-base border-t pt-2">
                     <span>Total</span>
